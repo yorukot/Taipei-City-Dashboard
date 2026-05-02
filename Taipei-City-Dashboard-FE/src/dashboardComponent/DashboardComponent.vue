@@ -203,51 +203,54 @@ function updateMouseLocation(e) {
 function changeShowTagTooltipState(state) {
 	showTagTooltip.value = state;
 }
+const chartComponents = {
+	DistrictChart,
+	BarChart,
+	MapLegend,
+	MetroChart,
+	TimelineSeparateChart,
+	TimelineStackedChart,
+	StackedAreaChart,
+	PolarAreaChart,
+	IconPercentChart,
+	ColumnChart,
+	DonutChart,
+	TreemapChart,
+	BarPercentChart,
+	GuageChart,
+	RadarChart,
+	HeatmapChart,
+	ColumnLineChart,
+	BarChartWithGoal,
+	IndicatorChart,
+	TextUnitChart,
+};
+const chartSvgs = {
+	DistrictChart: DistrictChartSvg,
+	BarChart: BarChartSvg,
+	MapLegend: MapLegendSvg,
+	MetroChart: MetroChartSvg,
+	TimelineSeparateChart: TimelineSeparateChartSvg,
+	TimelineStackedChart: TimelineStackedChartSvg,
+	StackedAreaChart: TimelineStackedChartSvg,
+	PolarAreaChart: PolarAreaChartSvg,
+	IconPercentChart: IconPercentChartSvg,
+	ColumnChart: ColumnChartSvg,
+	DonutChart: DonutChartSvg,
+	TreemapChart: TreemapChartSvg,
+	BarPercentChart: BarPercentChartSvg,
+	GuageChart: GuageChartSvg,
+	RadarChart: RadarChartSvg,
+	HeatmapChart: HeatmapChartSvg,
+	ColumnLineChart: ColumnLineChartSvg,
+	BarChartWithGoal: BarChartWithGoalSvg,
+	IndicatorChart: IndicatorChartSvg,
+	TextUnitChart: TextUnitChartSvg,
+};
 function returnChartComponent(name, svg) {
-	switch (name) {
-		case "DistrictChart":
-			return svg ? DistrictChartSvg : DistrictChart;
-		case "BarChart":
-			return svg ? BarChartSvg : BarChart;
-		case "MapLegend":
-			return svg ? MapLegendSvg : MapLegend;
-		case "MetroChart":
-			return svg ? MetroChartSvg : MetroChart;
-		case "TimelineSeparateChart":
-			return svg ? TimelineSeparateChartSvg : TimelineSeparateChart;
-		case "TimelineStackedChart":
-			return svg ? TimelineStackedChartSvg : TimelineStackedChart;
-		case "StackedAreaChart":
-			return svg ? TimelineStackedChartSvg : StackedAreaChart;
-		case "PolarAreaChart":
-			return svg ? PolarAreaChartSvg : PolarAreaChart;
-		case "IconPercentChart":
-			return svg ? IconPercentChartSvg : IconPercentChart;
-		case "ColumnChart":
-			return svg ? ColumnChartSvg : ColumnChart;
-		case "DonutChart":
-			return svg ? DonutChartSvg : DonutChart;
-		case "TreemapChart":
-			return svg ? TreemapChartSvg : TreemapChart;
-		case "BarPercentChart":
-			return svg ? BarPercentChartSvg : BarPercentChart;
-		case "GuageChart":
-			return svg ? GuageChartSvg : GuageChart;
-		case "RadarChart":
-			return svg ? RadarChartSvg : RadarChart;
-		case "HeatmapChart":
-			return svg ? HeatmapChartSvg : HeatmapChart;
-		case "ColumnLineChart":
-			return svg ? ColumnLineChartSvg : ColumnLineChart;
-		case "BarChartWithGoal":
-			return svg ? BarChartWithGoalSvg : BarChartWithGoal;
-		case "IndicatorChart":
-			return svg ? IndicatorChartSvg : IndicatorChart;
-		case "TextUnitChart":
-			return svg ? TextUnitChartSvg : TextUnitChart;
-		default:
-			return svg ? MapLegendSvg : MapLegend;
-	}
+	return svg
+		? chartSvgs[name] || MapLegendSvg
+		: chartComponents[name] || MapLegend;
 }
 </script>
 
