@@ -278,9 +278,9 @@ function returnChartComponent(name, svg) {
 					<h4 v-if="dataTime === '維護修復中'">
 						{{ `${config.source} | ` }}
 						<span>warning</span>
-						<h4 class="dataTime">
+						<div class="dataTime">
 							{{ `${dataTime}` }}
-						</h4>
+						</div>
 						<span>warning</span>
 					</h4>
 					<h4 v-else>

@@ -1,0 +1,10 @@
+{
+	"permissions": {
+		"allow": [
+			"Bash(pnpm run *)",
+			"Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:81/routeplanner)",
+			"Bash(curl -s http://localhost:81/routeplanner)",
+			"Bash(kill %1)"
+		]
+	}
+}

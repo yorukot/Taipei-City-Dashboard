@@ -236,6 +236,15 @@ onBeforeUnmount(() => {
 				<RouterView />
 			</div>
 		</div>
+		<!-- /routeplanner layout — full-width, planner provides its own sidebar -->
+		<div
+			v-else-if="authStore.currentPath === 'routeplanner'"
+			class="app-content"
+		>
+			<div class="app-content-main">
+				<RouterView />
+			</div>
+		</div>
 		<!-- /admin layouts -->
 		<div v-else-if="authStore.currentPath === 'admin'" class="app-content">
 			<AdminSideBar />
