@@ -70,12 +70,12 @@ const popularThemeGA = (title) => {
 	max-height: var(--font-xl);
 	display: flex;
 	align-items: center;
-	margin: var(--font-s) 0;
 	border-left: solid 4px transparent;
 	border-radius: 0 5px 5px 0;
-	transition: background-color 0.2s;
+	transition: background-color 0.2s ease-out;
 	white-space: nowrap;
 	text-wrap: nowrap;
+	padding-block: 6px;
 
 	&:hover {
 		background-color: var(--color-component-background);

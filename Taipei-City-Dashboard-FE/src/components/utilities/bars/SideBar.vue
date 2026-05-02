@@ -223,7 +223,7 @@ onMounted(() => {
 		font-weight: 400;
 		text-wrap: nowrap;
 		cursor: pointer;
-		margin-left: 1em;
+		margin: 1rem 0 0.3rem 0;
 	}
 
 	&-sub {
