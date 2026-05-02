@@ -10,12 +10,12 @@ The contentStore calls APIs to get content info and stores it.
 /* global gtag */
 
 import { defineStore } from "pinia";
-import { getComponentDataTimeframe } from "../assets/utilityFunctions/dataTimeframe";
 import {
 	getComponentSelectorParams,
 	initializeComponentSelectors,
 	updateComponentSelectorValue,
 } from "../assets/utilityFunctions/componentSelectors";
+import { getComponentDataTimeframe } from "../assets/utilityFunctions/dataTimeframe";
 import { CityManager } from "../dashboardComponent/utilities/cityManager";
 import http from "../router/axios";
 import router from "../router/index";
@@ -130,12 +130,15 @@ export const useContentStore = defineStore("content", {
 		) {
 			initializeComponentSelectors(component);
 
-			const response = await http.get(`/component/${component.id}/chart`, {
-				params: this.getComponentChartRequestParams(component, {
-					useDashboardTimeRange,
-					includeTimeRange,
-				}),
-			});
+			const response = await http.get(
+				`/component/${component.id}/chart`,
+				{
+					params: this.getComponentChartRequestParams(component, {
+						useDashboardTimeRange,
+						includeTimeRange,
+					}),
+				},
+			);
 
 			component.chart_data = response.data.data;
 
