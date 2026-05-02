@@ -1,7 +1,7 @@
 <!-- Developed by Taipei Urban Intelligence Center 2023-2024-->
 
 <script setup>
-import { ref, defineProps } from "vue";
+import { ref } from "vue";
 import { storeToRefs } from "pinia";
 import DashboardComponent from "../../../dashboardComponent/DashboardComponent.vue";
 import { useDialogStore } from "../../../store/dialogStore";
