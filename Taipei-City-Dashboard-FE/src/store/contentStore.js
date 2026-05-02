@@ -287,97 +287,97 @@ export const useContentStore = defineStore("content", {
 				) {
 					const component = this.cityDashboard.components[index];
 					try {
-				// 4-2. Get chart data
-					const response = await http.get(
-						`/component/${component.id}/chart`,
-						{
-							params: {
-								city: component.city,
-								...(!["static", "current", "demo"].includes(
-									component.time_from,
-								)
-									? this.getDashboardTimeRangeParams()
-									: {}),
-							},
-						},
-					);
-
-					this.cityDashboard.components[index].chart_data =
-						response.data.data;
-
-					if (response.data.categories) {
-						this.cityDashboard.components[
-							index
-						].chart_config.categories =
-							response.data.categories;
-					}
-				} catch (error) {
-					console.error(
-						`Failed to fetch chart data for component ${component.id}:`,
-						error,
-					);
-					// Set empty chart data to avoid errors in subsequent operations
-					this.cityDashboard.components[index].chart_data = [];
-
-					this.loading = false;
-				}
-			}
-			for (
-				let index = 0;
-				index < this.cityDashboard.components?.length;
-				index++
-			) {
-				const component = this.cityDashboard.components[index];
-				// Get history data if applicable
-				if (
-					component.history_config &&
-					component.history_config.range
-				) {
-					for (let i in component.history_config.range) {
-						try {
-							const response = await http.get(
-								`/component/${component.id}/history`,
-								{
-									params: {
-										city: component.city,
-										...getComponentDataTimeframe(
-											component.history_config.range[
-												i
-											],
-											"now",
-											true,
-										),
-									},
+						// 4-2. Get chart data
+						const response = await http.get(
+							`/component/${component.id}/chart`,
+							{
+								params: {
+									city: component.city,
+									...(!["static", "current", "demo"].includes(
+										component.time_from,
+									)
+										? this.getDashboardTimeRangeParams()
+										: {}),
 								},
-							);
+							},
+						);
 
-							if (i === "0") {
+						this.cityDashboard.components[index].chart_data =
+							response.data.data;
+
+						if (response.data.categories) {
+							this.cityDashboard.components[
+								index
+							].chart_config.categories =
+								response.data.categories;
+						}
+					} catch (error) {
+						console.error(
+							`Failed to fetch chart data for component ${component.id}:`,
+							error,
+						);
+						// Set empty chart data to avoid errors in subsequent operations
+						this.cityDashboard.components[index].chart_data = [];
+
+						this.loading = false;
+					}
+				}
+				for (
+					let index = 0;
+					index < this.cityDashboard.components?.length;
+					index++
+				) {
+					const component = this.cityDashboard.components[index];
+					// Get history data if applicable
+					if (
+						component.history_config &&
+						component.history_config.range
+					) {
+						for (let i in component.history_config.range) {
+							try {
+								const response = await http.get(
+									`/component/${component.id}/history`,
+									{
+										params: {
+											city: component.city,
+											...getComponentDataTimeframe(
+												component.history_config.range[
+													i
+												],
+												"now",
+												true,
+											),
+										},
+									},
+								);
+
+								if (i === "0") {
+									this.cityDashboard.components[
+										index
+									].history_data = [];
+								}
 								this.cityDashboard.components[
 									index
-								].history_data = [];
+								].history_data.push(response.data.data);
+							} catch (error) {
+								console.error(
+									`Failed to fetch history data for component ${component.id} (range ${i}):`,
+									error,
+								);
+								// Add empty data to maintain data structure consistency
+								this.cityDashboard.components[
+									index
+								].history_data.push([]);
 							}
-							this.cityDashboard.components[
-								index
-							].history_data.push(response.data.data);
-						} catch (error) {
-							console.error(
-								`Failed to fetch history data for component ${component.id} (range ${i}):`,
-								error,
-							);
-							// Add empty data to maintain data structure consistency
-							this.cityDashboard.components[
-								index
-							].history_data.push([]);
 						}
 					}
 				}
+			} catch (error) {
+				console.error("Error setting dashboard chart data:", error);
+				this.loading = false;
 			}
-		} catch (error) {
-			console.error("Error setting dashboard chart data:", error);
-			this.loading = false;
-		}
-		this.filterCurrentDashboardContent();
-	},
+			this.filterCurrentDashboardContent();
+		},
 
 		// 20251224 因應擁擠程度相關組件須每分鐘刷新新增func
 		async updateCurrentDashboardAllChartData() {
@@ -1130,8 +1130,7 @@ export const useContentStore = defineStore("content", {
 				new Date(from - tzoffset).toISOString().split(".")[0] +
 				"+08:00";
 			const timeto =
-				new Date(now - tzoffset).toISOString().split(".")[0] +
-				"+08:00";
+				new Date(now - tzoffset).toISOString().split(".")[0] + "+08:00";
 			return { timefrom, timeto };
 		},
 	},

@@ -43,6 +43,7 @@
 		"@eslint/js": "^9.0.0",
 		"@vitejs/plugin-vue": "^5.0.3",
 		"eslint-plugin-vue": "^9.20.1",
+		"globals": "^17.6.0",
 		"prettier": "^3.8.3",
 		"prettier-plugin-organize-imports": "^4.3.0",
 		"prettier-plugin-packagejson": "^3.0.2",
