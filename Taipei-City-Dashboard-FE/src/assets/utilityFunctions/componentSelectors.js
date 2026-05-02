@@ -1,11 +1,84 @@
-import youbikeStationLabels from "../configs/selectors/youbikeStationLabels.json";
+import newTaipeiStations from "../configs/selectors/newtaipei-stations.json";
+import taipeiStations from "../configs/selectors/taipei-stations.json";
 
 const selectorLabelRegistry = {
-	youbike_station_labels: youbikeStationLabels,
+	youbike_station_labels: {
+		taipei: toYoubikeStationOptions(taipeiStations),
+		new_tpe: toYoubikeStationOptions(newTaipeiStations),
+	},
+};
+
+const youbikeSelectorConfig = {
+	selectors: [
+		{
+			key: "selector_1",
+			label: "縣市",
+			type: "select",
+			default: "taipei",
+			options: [
+				{ label: "臺北市", value: "taipei" },
+				{ label: "新北市", value: "new_tpe" },
+			],
+		},
+		{
+			key: "selector_2",
+			label: "站點",
+			type: "search-select",
+			depends_on: "selector_1",
+			label_key: "youbike_station_labels",
+			default: {
+				taipei: "TPE500101001",
+				new_tpe: "NWT500201001",
+			},
+		},
+	],
+};
+
+const selectorConfigFallbacks = {
+	youbike_availability_trend: youbikeSelectorConfig,
+	youbike_probability_trend: youbikeSelectorConfig,
+	train_station_reliability_trend: {
+		selectors: [
+			{
+				key: "selector_1",
+				label: "車站",
+				type: "select",
+				default: "1000",
+				options: [
+					{ label: "臺北", value: "1000" },
+					{ label: "板橋", value: "1020" },
+					{ label: "松山", value: "0990" },
+					{ label: "花蓮", value: "7000" },
+					{ label: "臺南", value: "4220" },
+				],
+			},
+			{
+				key: "selector_2",
+				label: "車種",
+				type: "select",
+				default: "all",
+				options: [
+					{ label: "全部", value: "all" },
+					{ label: "區間", value: "區間" },
+					{ label: "對號", value: "對號" },
+				],
+			},
+		],
+	},
 };
 
 export function hasSelectorConfig(component) {
-	return Array.isArray(component?.selector_config?.selectors);
+	return Array.isArray(getComponentSelectorConfig(component)?.selectors);
+}
+
+export function getComponentSelectorConfig(component) {
+	const selectorConfig = normalizeSelectorConfig(component?.selector_config);
+
+	if (Array.isArray(selectorConfig?.selectors)) {
+		return selectorConfig;
+	}
+
+	return selectorConfigFallbacks[component?.index] || null;
 }
 
 export function getSelectorOptions(selector, selectorValues = {}) {
@@ -24,11 +97,12 @@ export function getSelectorOptions(selector, selectorValues = {}) {
 }
 
 export function initializeComponentSelectors(component) {
-	if (!hasSelectorConfig(component)) return {};
+	const selectorConfig = getComponentSelectorConfig(component);
+	if (!Array.isArray(selectorConfig?.selectors)) return {};
 
 	const selectorValues = { ...(component.selector_values || {}) };
 
-	component.selector_config.selectors.forEach((selector) => {
+	selectorConfig.selectors.forEach((selector) => {
 		const options = getSelectorOptions(selector, selectorValues);
 		const selectedValue = selectorValues[selector.key];
 		const selectedExists =
@@ -66,10 +140,11 @@ export function updateComponentSelectorValue(component, key, value) {
 }
 
 export function getComponentSelectorParams(component) {
-	if (!hasSelectorConfig(component)) return {};
+	const selectorConfig = getComponentSelectorConfig(component);
+	if (!Array.isArray(selectorConfig?.selectors)) return {};
 
 	const selectorValues = initializeComponentSelectors(component);
-	return component.selector_config.selectors.reduce((params, selector) => {
+	return selectorConfig.selectors.reduce((params, selector) => {
 		if (selectorValues[selector.key]) {
 			params[selector.key] = selectorValues[selector.key];
 		}
@@ -78,7 +153,7 @@ export function getComponentSelectorParams(component) {
 }
 
 function resetDependentSelectors(component, changedKey) {
-	const selectors = component.selector_config?.selectors || [];
+	const selectors = getComponentSelectorConfig(component)?.selectors || [];
 
 	selectors
 		.filter((selector) => selector.depends_on === changedKey)
@@ -119,4 +194,26 @@ function getSelectorDefault(selector, selectorValues) {
 	}
 
 	return selector.default || "";
+}
+
+function normalizeSelectorConfig(selectorConfig) {
+	if (typeof selectorConfig !== "string") return selectorConfig;
+	if (!selectorConfig.trim()) return null;
+
+	try {
+		return JSON.parse(selectorConfig);
+	} catch (err) {
+		console.warn("Invalid selector_config JSON", err);
+		return null;
+	}
+}
+
+function toYoubikeStationOptions(stations) {
+	return stations.map((station) => ({
+		label:
+			station.StationName?.Zh_tw ||
+			station.StationName?.En ||
+			station.StationID,
+		value: station.StationUID,
+	}));
 }

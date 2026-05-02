@@ -30,6 +30,7 @@ import IndicatorChart from "./components/IndicatorChart.vue";
 import TextUnitChart from "./components/TextUnitChart.vue";
 import SelectorSearchSelect from "./components/SelectorSearchSelect.vue";
 import {
+	getComponentSelectorConfig,
 	getSelectorOptions,
 	initializeComponentSelectors,
 } from "../assets/utilityFunctions/componentSelectors";
@@ -114,7 +115,7 @@ const toggleOn = computed({
 	},
 });
 const selectorControls = computed(
-	() => props.config.selector_config?.selectors || [],
+	() => getComponentSelectorConfig(props.config)?.selectors || [],
 );
 const selectorValues = computed(() =>
 	selectorControls.value.length

@@ -20,15 +20,13 @@ const selectedOption = computed(() =>
 const filteredOptions = computed(() => {
 	const keyword = searchText.value.trim().toLowerCase();
 
-	if (!keyword) return props.options.slice(0, 80);
+	if (!keyword) return props.options;
 
-	return props.options
-		.filter(
-			(option) =>
-				option.label?.toLowerCase().includes(keyword) ||
-				option.value?.toLowerCase().includes(keyword),
-		)
-		.slice(0, 80);
+	return props.options.filter(
+		(option) =>
+			option.label?.toLowerCase().includes(keyword) ||
+			option.value?.toLowerCase().includes(keyword),
+	);
 });
 
 watch(
@@ -115,7 +113,7 @@ function closeOptions() {
 		left: 0;
 		z-index: 20;
 		width: 100%;
-		max-height: 180px;
+		max-height: min(320px, 45vh);
 		overflow-y: auto;
 		border: 1px solid var(--color-border);
 		border-radius: 5px;
