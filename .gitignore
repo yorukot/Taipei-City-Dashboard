@@ -9,6 +9,15 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+Taipei-City-Dashboard-Routing/data/otp/*
+!Taipei-City-Dashboard-Routing/data/otp/*.json
+
+TCDMock-YouBike/*
+!TCDMock-YouBike/**/*.py
+
+TCDMock-Train/*
+!TCDMock-Train/**/*.py
+
 # Editor directories and files
 .idea
 *.suo

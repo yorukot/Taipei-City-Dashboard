@@ -1,0 +1,55 @@
+services:
+  otp-build:
+    image: docker.io/opentripplanner/opentripplanner:latest
+    profiles: ["build"]
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx6g"
+    volumes:
+      - ./data/otp:/var/opentripplanner
+      # - ./config/otp/build-config.json:/var/opentripplanner/build-config.json:ro
+      # - ./config/otp/router-config.json:/var/opentripplanner/router-config.json:ro
+    command: ["--build", "--save"]
+
+  # ─── long-running services ─────────────────────────────────────
+  otp:
+    image: docker.io/opentripplanner/opentripplanner:latest
+    restart: unless-stopped
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx3g"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data/otp:/var/opentripplanner
+      # - ./config/otp/router-config.json:/var/opentripplanner/router-config.json:ro
+    command: ["--load", "--serve"]
+    depends_on:
+      - gbfs
+
+  gbfs:
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+      - ./data/gbfs:/usr/share/nginx/html:ro
+    ports:
+      - "8082:80"
+
+  nominatim:
+    image: mediagis/nominatim:5.1
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      PBF_PATH: /nominatim/data/taiwan.osm.pbf
+      NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD}
+      IMPORT_STYLE: address # smaller index than 'full', plenty for geocoding
+      REPLICATION_URL: https://download.geofabrik.de/asia/taiwan-updates/
+      THREADS: 12
+    volumes:
+      - ./data/otp/taiwan.osm.pbf:/nominatim/data/taiwan.osm.pbf
+      - nominatim-pgdata:/var/lib/postgresql/16/main
+      - nominatim-flatnode:/nominatim/flatnode
+    shm_size: 1gb
+
+volumes:
+  nominatim-pgdata:
+  nominatim-flatnode:

@@ -1,0 +1,9 @@
+{
+  "osmDefaults": { "timeZone": "Asia/Taipei" },
+  "transitFeeds": [
+    { "type": "gtfs", "feedId": "tpc", "source": "tpc-gtfs.zip" },
+    { "type": "gtfs", "feedId": "tra", "source": "tra-gtfs.zip" },
+    { "type": "gtfs", "feedId": "trtc", "source": "trtc-gtfs.zip" }
+  ],
+  "osm": [{ "source": "taiwan.osm.pbf" }]
+}
