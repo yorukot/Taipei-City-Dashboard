@@ -66,6 +66,14 @@ type ThreeDimensionalData struct {
 	Data  int    `gorm:"column:data"`
 }
 
+type FiveDimensionalData struct {
+	Xaxis string          `gorm:"column:x_axis"`
+	P25   sql.NullFloat64 `gorm:"column:p25"`
+	P50   sql.NullFloat64 `gorm:"column:p50"`
+	P75   sql.NullFloat64 `gorm:"column:p75"`
+	Stdev sql.NullFloat64 `gorm:"column:stdev"`
+}
+
 type ThreeDimensionalDataOutput struct {
 	Name string `json:"name"`
 	Icon string `json:"icon"`
@@ -403,6 +411,24 @@ func GetThreeDimensionalData(query *string, params ChartQueryParams) (chartDataO
 	}
 
 	return chartDataOutput, categories, nil
+}
+
+func GetFiveDimensionalData(query *string, params ChartQueryParams) (chartDataOutput []FiveDimensionalData, err error) {
+	var chartData []FiveDimensionalData
+
+	// 2. Get the data from the database
+	err = scanChartData(query, params, &chartData)
+	if err != nil {
+		return chartDataOutput, err
+	}
+	if len(chartData) == 0 {
+		return chartDataOutput, err
+	}
+
+	// 3. Convert the data to the format required by the front-end
+	chartDataOutput = append(chartDataOutput, chartData...)
+
+	return chartDataOutput, nil
 }
 
 func GetTimeSeriesData(query *string, params ChartQueryParams) (chartDataOutput []TimeSeriesDataOutput, err error) {

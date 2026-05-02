@@ -109,6 +109,13 @@ func GetComponentChartData(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "success", "data": chartData, "categories": categories})
+	} else if baseQueryType == "five_d" {
+		chartData, err := models.GetFiveDimensionalData(&queryString, chartQueryParams)
+		if err != nil {
+			handleComponentChartDataError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "success", "data": chartData})
 	} else if baseQueryType == "time" {
 		chartData, err := models.GetTimeSeriesData(&queryString, chartQueryParams)
 		if err != nil {
