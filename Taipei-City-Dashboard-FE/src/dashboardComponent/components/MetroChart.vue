@@ -18,17 +18,13 @@ const props = defineProps(["chart_config", "activeChart", "series"]);
 
 const color = ref(props.chart_config.color[0]);
 const line = computed(() => {
-	if (props.series[0].data[0].x.includes("BR")) {
-		return "BR";
-	} else if (props.series[0].data[0].x.includes("R")) {
-		return "R";
-	} else if (props.series[0].data[0].x.includes("BL")) {
-		return "BL";
-	} else if (props.series[0].data[0].x.includes("G")) {
-		return "G";
-	} else if (props.series[0].data[0].x.includes("O")) {
-		return "O";
-	}
+	const x = props.series?.[0]?.data?.[0]?.x;
+	if (typeof x !== "string") return "R";
+	if (x.includes("BR")) return "BR";
+	if (x.includes("R")) return "R";
+	if (x.includes("BL")) return "BL";
+	if (x.includes("G")) return "G";
+	if (x.includes("O")) return "O";
 	return "R";
 });
 
@@ -38,10 +34,14 @@ const parsedSeries = computed(() => {
 		{ name: line.value, data: [] },
 	];
 
-	let toBeParsed = JSON.parse(JSON.stringify(props.series[0].data));
+	const sourceData = props.series?.[0]?.data;
+	if (!Array.isArray(sourceData)) return parsedData;
+
+	let toBeParsed = JSON.parse(JSON.stringify(sourceData));
 
 	toBeParsed.forEach((element) => {
-		element.y = element.y.toString();
+		if (typeof element?.x !== "string") return;
+		element.y = element.y?.toString();
 
 		if (element.x.includes("A")) {
 			element.x = element.x.replace("A", "");
