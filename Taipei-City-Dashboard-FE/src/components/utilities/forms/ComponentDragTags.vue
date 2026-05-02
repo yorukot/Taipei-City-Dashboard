@@ -72,8 +72,9 @@ const handleDragEnd = () => {
 				:style="{
 					textShadow: colorData ? '0 0 2px black' : '',
 				}"
-				>cancel</span
 			>
+				cancel
+			</span>
 		</button>
 	</div>
 </template>

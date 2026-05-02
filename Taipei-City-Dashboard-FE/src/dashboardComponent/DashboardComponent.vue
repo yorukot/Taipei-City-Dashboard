@@ -260,15 +260,15 @@ function returnChartComponent(name, svg) {
 						@mousemove="updateMouseLocation"
 						@mouseleave="changeShowTagTooltipState(false)"
 					>
-						<span v-if="config.map_filter && config.map_config"
-							>tune</span
-						>
-						<span v-if="config.map_config && config.map_config[0]"
-							>map</span
-						>
-						<span v-if="config.history_config?.range"
-							>insights</span
-						>
+						<span v-if="config.map_filter && config.map_config">
+							tune
+						</span>
+						<span v-if="config.map_config && config.map_config[0]">
+							map
+						</span>
+						<span v-if="config.history_config?.range">
+							insights
+						</span>
 					</div>
 				</h3>
 				<p v-if="mode === 'preview'">
@@ -276,7 +276,8 @@ function returnChartComponent(name, svg) {
 				</p>
 				<div v-if="!mode.includes('map') || toggleOn">
 					<h4 v-if="dataTime === '維護修復中'">
-						{{ `${config.source} | ` }}<span>warning</span>
+						{{ `${config.source} | ` }}
+						<span>warning</span>
 						<h4>{{ `${dataTime}` }}</h4>
 						<span>warning</span>
 					</h4>

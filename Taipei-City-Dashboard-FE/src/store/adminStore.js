@@ -4,12 +4,12 @@
 /*
 The adminStore handles actions that are used in the admin pages.
 */
-import http from "../router/axios";
 import { defineStore } from "pinia";
-import { useDialogStore } from "./dialogStore";
-import { useContentStore } from "./contentStore";
-import { useAuthStore } from "./authStore";
 import { getComponentDataTimeframe } from "../assets/utilityFunctions/dataTimeframe";
+import http from "../router/axios";
+import { useAuthStore } from "./authStore";
+import { useContentStore } from "./contentStore";
+import { useDialogStore } from "./dialogStore";
 
 export const useAdminStore = defineStore("admin", {
 	state: () => ({

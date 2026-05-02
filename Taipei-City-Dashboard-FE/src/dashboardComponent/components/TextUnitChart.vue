@@ -35,13 +35,15 @@ const props = defineProps([
 					<span
 						class="TextUnitChart__value"
 						:style="{ color: props.chart_config.color[1] }"
-						>{{ item.data[0] }}</span
 					>
+						{{ item.data[0] }}
+					</span>
 					<span
 						class="TextUnitChart__unit"
 						:style="{ color: props.chart_config.color[2] }"
-						>{{ item.icon }}</span
 					>
+						{{ item.icon }}
+					</span>
 				</div>
 			</div>
 		</div>

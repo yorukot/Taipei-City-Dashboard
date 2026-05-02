@@ -138,13 +138,13 @@ function handleClose() {
 				</div>
 				<div :style="{ display: 'flex', flexDirection: 'column' }">
 					<div class="addeditdashboards-settings">
-						<label
-							>{{
+						<label>
+							{{
 								dialogStore.addEdit === "edit"
 									? "編輯"
 									: "新增"
-							}}儀表板組件 (拖拉以更改順序)</label
-						>
+							}}儀表板組件 (拖拉以更改順序)
+						</label>
 						<div class="addeditdashboards-settings-components">
 							<ComponentDragTags
 								:tags="editDashboard.components"

@@ -148,18 +148,21 @@ onMounted(() => {
 								)
 							"
 						>
-							<span>flag</span>回報
+							<span>flag</span>
+							回報
 						</button>
 						<button
 							v-if="item.chart_config.types[0] !== 'MetroChart'"
 							@click="dialogStore.showDialog('downloadData')"
 						>
-							<span>download</span>下載
+							<span>download</span>
+							下載
 						</button>
 						<button
 							@click="dialogStore.showDialog('embedComponent')"
 						>
-							<span>code</span>內嵌
+							<span>code</span>
+							內嵌
 						</button>
 					</div>
 				</div>
@@ -190,9 +193,10 @@ onMounted(() => {
 							:href="link"
 							target="_blank"
 							rel="noreferrer"
-							><div>{{ index + 1 }}</div>
-							<p>{{ link }}</p></a
 						>
+							<div>{{ index + 1 }}</div>
+							<p>{{ link }}</p>
+						</a>
 					</div>
 					<div
 						v-if="item.contributors"
@@ -211,7 +215,8 @@ onMounted(() => {
 									"
 									target="_blank"
 									rel="noreferrer"
-									><img
+								>
+									<img
 										:src="
 											contentStore.contributors[
 												contributor

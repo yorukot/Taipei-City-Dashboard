@@ -87,8 +87,9 @@ onMounted(() => {
 				<span
 					v-if="searchParams.searchbyname !== ''"
 					@click="searchParams.searchbyname = ''"
-					>cancel</span
 				>
+					cancel
+				</span>
 			</div>
 			<div>
 				<input
@@ -99,8 +100,9 @@ onMounted(() => {
 				<span
 					v-if="searchParams.searchbyid !== ''"
 					@click="searchParams.searchbyid = ''"
-					>cancel</span
 				>
+					cancel
+				</span>
 			</div>
 			<button @click="handleNewQuery">搜尋</button>
 		</div>
@@ -119,8 +121,8 @@ onMounted(() => {
 					>
 						ID
 					</TableHeader>
-					<TableHeader min-width="150px"> 名稱 </TableHeader>
-					<TableHeader min-width="150px"> 帳號 </TableHeader>
+					<TableHeader min-width="150px">名稱</TableHeader>
+					<TableHeader min-width="150px">帳號</TableHeader>
 					<TableHeader
 						min-width="100px"
 						:sort="true"
@@ -155,8 +157,9 @@ onMounted(() => {
 						"
 						@sort="handleSort('is_blacked')"
 					>
-						API黑名單 </TableHeader
-					><TableHeader
+						API黑名單
+					</TableHeader>
+					<TableHeader
 						:sort="true"
 						:mode="
 							searchParams.sort === 'login_at'
@@ -180,7 +183,7 @@ onMounted(() => {
 					>
 						啟用狀態
 					</TableHeader>
-					<TableHeader min-width="200px"> 停用時間 </TableHeader>
+					<TableHeader min-width="200px">停用時間</TableHeader>
 				</tr>
 			</thead>
 			<!-- 2-1. users are present -->
@@ -196,20 +199,20 @@ onMounted(() => {
 					<td>{{ user.account ? user.account : user.TpAccount }}</td>
 					<td>{{ user.is_admin ? "管理員" : "一般用戶" }}</td>
 					<td>
-						<span>{{
-							user.is_whitelist ? "check_circle" : "cancel"
-						}}</span>
+						<span>
+							{{ user.is_whitelist ? "check_circle" : "cancel" }}
+						</span>
 					</td>
 					<td>
-						<span>{{
-							user.is_blacked ? "check_circle" : "cancel"
-						}}</span>
+						<span>
+							{{ user.is_blacked ? "check_circle" : "cancel" }}
+						</span>
 					</td>
 					<td>{{ parseTime(user.login_at) }}</td>
 					<td>
-						<span>{{
-							user.is_active ? "check_circle" : "cancel"
-						}}</span>
+						<span>
+							{{ user.is_active ? "check_circle" : "cancel" }}
+						</span>
 					</td>
 					<td>
 						{{

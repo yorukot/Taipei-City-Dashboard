@@ -40,9 +40,9 @@ function handleOpenSettings() {
 				class="show-if-mobile"
 				@click="dialogStore.showDialog('mobileNavigation')"
 			>
-				<span class="settingsbar-title-navigation"
-					>arrow_drop_down_circle</span
-				>
+				<span class="settingsbar-title-navigation">
+					arrow_drop_down_circle
+				</span>
 			</button>
 			<MobileNavigation />
 			<div

@@ -4,39 +4,35 @@ steps:
           - "-c"
           - >
               git fetch --tags
-
+              
               GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
-
+              
               if [ -z "$${GIT_TAG}" ]; then
                 COMMIT_SHA=$(git rev-parse --short HEAD)
                 VITE_APP_VERSION=$COMMIT_SHA
               else
                 VITE_APP_VERSION=$${GIT_TAG}
               fi
-
+              
               echo "VITE_API_URL=$_VITE_API_URL" >> Taipei-City-Dashboard-FE/.env
-
+              
               echo "VITE_APP_TITLE=$_VITE_APP_TITLE" >> Taipei-City-Dashboard-FE/.env
-
-              echo "VITE_APP_VERSION=$_VITE_APP_VERSION" >>
-              Taipei-City-Dashboard-FE/.env
-
-              echo "VITE_MAPBOXTILE=$_VITE_MAPBOXTILE" >>
-              Taipei-City-Dashboard-FE/.env
-
+              
+              echo "VITE_APP_VERSION=$_VITE_APP_VERSION" >> Taipei-City-Dashboard-FE/.env
+              
+              echo "VITE_MAPBOXTILE=$_VITE_MAPBOXTILE" >> Taipei-City-Dashboard-FE/.env
+              
               echo "VITE_MAPBOXTOKEN=$$MAPBOX_TOKEN" >> Taipei-City-Dashboard-FE/.env
+              
+              echo "VITE_TAIPEIPASS_URL=$_VITE_TAIPEIPASS_URL" >> Taipei-City-Dashboard-FE/.env
+              
+              echo "VITE_TAIPEIPASS_CLIENT_ID=$$TAIPEIPASS_CLIENT_ID" >> Taipei-City-Dashboard-FE/.env
+              
+              echo "VITE_TAIPEIPASS_SCOPE=$_VITE_TAIPEIPASS_SCOPE" >> Taipei-City-Dashboard-FE/.env
+              
+              echo "VITE_PERSONAL_BOARD_UPDATE=$_VITE_PERSONAL_BOARD_UPDATE" >> Taipei-City-Dashboard-FE/.env
 
-              echo "VITE_TAIPEIPASS_URL=$_VITE_TAIPEIPASS_URL" >>
-              Taipei-City-Dashboard-FE/.env
 
-              echo "VITE_TAIPEIPASS_CLIENT_ID=$$TAIPEIPASS_CLIENT_ID" >>
-              Taipei-City-Dashboard-FE/.env
-
-              echo "VITE_TAIPEIPASS_SCOPE=$_VITE_TAIPEIPASS_SCOPE" >>
-              Taipei-City-Dashboard-FE/.env
-
-              echo "VITE_PERSONAL_BOARD_UPDATE=$_VITE_PERSONAL_BOARD_UPDATE" >>
-              Taipei-City-Dashboard-FE/.env
       entrypoint: bash
       secretEnv:
           - MAPBOX_TOKEN

@@ -5,8 +5,8 @@
 
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
-import { useDialogStore } from "../store/dialogStore";
 import { useContentStore } from "../store/contentStore";
+import { useDialogStore } from "../store/dialogStore";
 
 const http = axios.create({
 	baseURL: import.meta.env.VITE_API_URL,

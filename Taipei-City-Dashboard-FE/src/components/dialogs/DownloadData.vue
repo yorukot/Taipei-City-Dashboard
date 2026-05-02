@@ -111,8 +111,9 @@ function handleClose() {
 					<a
 						:href="`data:application/json;charset=utf-8,${parsedJson}`"
 						:download="`${name}.json`"
-						>下載JSON</a
 					>
+						下載JSON
+					</a>
 				</button>
 				<button
 					v-if="name && fileType === 'CSV'"

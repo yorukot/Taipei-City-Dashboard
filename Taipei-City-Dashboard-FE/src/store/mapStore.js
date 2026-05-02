@@ -9,18 +9,18 @@ https://docs.mapbox.com/mapbox-gl-js/guides/
 */
 
 /* global gtag */
-import { createApp, defineComponent, nextTick, ref, watch, markRaw } from "vue";
-import { defineStore } from "pinia";
-import mapboxGl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
-import Hls from "hls.js";
 import { ArcLayer } from "@deck.gl/layers";
 import { MapboxOverlay } from "@deck.gl/mapbox";
+import { distance, point } from "@turf/turf";
 import axios from "axios";
-import http from "../router/axios.js";
+import Hls from "hls.js";
+import mapboxGl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { defineStore } from "pinia";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { point, distance } from "@turf/turf";
+import { createApp, defineComponent, markRaw, nextTick, ref, watch } from "vue";
+import http from "../router/axios.js";
 
 // Other Stores
 import { useAuthStore } from "./authStore";
@@ -30,33 +30,33 @@ import { useDialogStore } from "./dialogStore";
 import MapPopup from "../components/map/MapPopup.vue";
 
 // Utility Functions or Configs
+import { AnimatedArcLayer } from "../assets/configs/mapbox/arcAnimate.js";
 import {
-	MapObjectConfig,
 	CityMapView,
+	MapObjectConfig,
 	TaipeiBuilding,
+	maplayerCommonLayout,
+	maplayerCommonPaint,
 	metroTaipeiTown,
 	metroTaipeiVillage,
 	metroTpDistrict,
 	metroTpVillage,
-	maplayerCommonLayout,
-	maplayerCommonPaint,
 } from "../assets/configs/mapbox/mapConfig.js";
 import mapStyle from "../assets/configs/mapbox/mapStyle.js";
+import { calculateHaversineDistance } from "../assets/utilityFunctions/calculateHaversineDistance";
 import { hexToRGB } from "../assets/utilityFunctions/colorConvert.js";
 import { interpolation } from "../assets/utilityFunctions/interpolation.js";
 import { marchingSquare } from "../assets/utilityFunctions/marchingSquare.js";
 import { voronoi } from "../assets/utilityFunctions/voronoi.js";
-import { calculateHaversineDistance } from "../assets/utilityFunctions/calculateHaversineDistance";
-import { AnimatedArcLayer } from "../assets/configs/mapbox/arcAnimate.js";
 // 3D Mrt Map 相關 Utility Functions
-import { cutRouteSegment } from "../assets/utilityFunctions/getRouteForAnimation.js";
 import { interpolateAlongSegment } from "../assets/utilityFunctions/geometryUtils.js";
-import { updateCarsPosition } from "../assets/utilityFunctions/mrtCars.js";
 import { getPopupCoordinates } from "../assets/utilityFunctions/getPopupCoordinates.js";
+import { cutRouteSegment } from "../assets/utilityFunctions/getRouteForAnimation.js";
 import {
 	getCrowdColor,
 	mrtLineColor,
 } from "../assets/utilityFunctions/getThematicColor.js";
+import { updateCarsPosition } from "../assets/utilityFunctions/mrtCars.js";
 
 export const useMapStore = defineStore("map", {
 	state: () => ({

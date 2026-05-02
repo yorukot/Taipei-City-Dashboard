@@ -353,10 +353,10 @@ function handleLegendSelection(index) {
 					}}{{ props.chart_config.categories && "-"
 					}}{{ showedData[aHovered].data[rHovered].r }}
 				</h6>
-				<span
-					>{{ showedData[aHovered].data[rHovered].value
-					}}{{ chart_config.unit }}</span
-				>
+				<span>
+					{{ showedData[aHovered].data[rHovered].value
+					}}{{ chart_config.unit }}
+				</span>
 			</div>
 		</Teleport>
 	</div>

@@ -84,12 +84,12 @@ onMounted(() => {
 			<thead>
 				<tr class="admincontributor-table-header">
 					<TableHeader min-width="60px" />
-					<TableHeader min-width="60px"> ID </TableHeader>
-					<TableHeader min-width="150px"> 名稱 </TableHeader>
-					<TableHeader min-width="150px"> 圖片 </TableHeader>
-					<TableHeader min-width="200px"> 連結 </TableHeader>
-					<TableHeader min-width="200px"> 建立時間 </TableHeader>
-					<TableHeader min-width="200px"> 更新時間 </TableHeader>
+					<TableHeader min-width="60px">ID</TableHeader>
+					<TableHeader min-width="150px">名稱</TableHeader>
+					<TableHeader min-width="150px">圖片</TableHeader>
+					<TableHeader min-width="200px">連結</TableHeader>
+					<TableHeader min-width="200px">建立時間</TableHeader>
+					<TableHeader min-width="200px">更新時間</TableHeader>
 				</tr>
 			</thead>
 			<!-- 2-1. contributors are present -->

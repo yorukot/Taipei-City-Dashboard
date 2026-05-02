@@ -112,8 +112,9 @@ onMounted(() => {
 				<span
 					v-if="searchParams.searchbyname !== ''"
 					@click="searchParams.searchbyname = ''"
-					>cancel</span
 				>
+					cancel
+				</span>
 			</div>
 			<div>
 				<input
@@ -124,8 +125,9 @@ onMounted(() => {
 				<span
 					v-if="searchParams.searchbyindex !== ''"
 					@click="searchParams.searchbyindex = ''"
-					>cancel</span
 				>
+					cancel
+				</span>
 			</div>
 			<button @click="handleNewQuery">搜尋</button>
 			<!-- <button @click="showAdminAddComponent">
@@ -137,7 +139,7 @@ onMounted(() => {
 			<thead>
 				<tr class="admineditcomponent-table-header">
 					<TableHeader min-width="60px" />
-					<TableHeader min-width="40px"> City </TableHeader>
+					<TableHeader min-width="40px">City</TableHeader>
 					<!-- <TableHeader
             :sort="true"
             :mode="
@@ -160,7 +162,7 @@ onMounted(() => {
 					>
 						Index
 					</TableHeader>
-					<TableHeader min-width="200px"> 名稱 </TableHeader>
+					<TableHeader min-width="200px">名稱</TableHeader>
 					<TableHeader>狀態</TableHeader>
 					<TableHeader
 						:sort="true"
@@ -174,8 +176,8 @@ onMounted(() => {
 					>
 						資料來源
 					</TableHeader>
-					<TableHeader min-width="165px"> 圖表類型 </TableHeader>
-					<TableHeader min-width="165px"> 地圖類型 </TableHeader>
+					<TableHeader min-width="165px">圖表類型</TableHeader>
+					<TableHeader min-width="165px">地圖類型</TableHeader>
 					<TableHeader>歷史資料</TableHeader>
 					<TableHeader>更新頻率</TableHeader>
 					<TableHeader
@@ -233,11 +235,13 @@ onMounted(() => {
 						</div>
 					</td>
 					<td>
-						<span>{{
-							component.history_config !== null
-								? "check_circle"
-								: ""
-						}}</span>
+						<span>
+							{{
+								component.history_config !== null
+									? "check_circle"
+									: ""
+							}}
+						</span>
 					</td>
 					<td>
 						<div class="admineditcomponent-table-update">

@@ -27,8 +27,9 @@ const statusToIcon = {
 						fail: dialogStore.notification.status === 'fail',
 						info: dialogStore.notification.status === 'info',
 					}"
-					>{{ statusToIcon[dialogStore.notification.status] }}</span
 				>
+					{{ statusToIcon[dialogStore.notification.status] }}
+				</span>
 				<h5
 					:class="{
 						success: dialogStore.notification.status === 'success',

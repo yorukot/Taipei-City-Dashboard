@@ -85,9 +85,9 @@ const isLocalhost = computed(() => {
 				class="hide-if-mobile"
 				@click="toggle"
 			>
-				<span>{{
-					isFullscreen ? "fullscreen_exit" : "fullscreen"
-				}}</span>
+				<span>
+					{{ isFullscreen ? "fullscreen_exit" : "fullscreen" }}
+				</span>
 			</button>
 			<div class="navbar-user-info">
 				<button><span>info</span></button>
@@ -101,8 +101,9 @@ const isLocalhost = computed(() => {
 							"
 							target="_blank"
 							rel="noreferrer"
-							>技術文件</a
 						>
+							技術文件
+						</a>
 					</li>
 					<li>
 						<button
@@ -139,13 +140,13 @@ const isLocalhost = computed(() => {
 						"
 						class="hide-if-mobile"
 					>
-						<router-link to="/admin"> 管理員後臺 </router-link>
+						<router-link to="/admin">管理員後臺</router-link>
 					</li>
 					<li
 						v-else-if="authStore.user.is_admin"
 						class="hide-if-mobile"
 					>
-						<router-link to="/dashboard"> 返回儀表板 </router-link>
+						<router-link to="/dashboard">返回儀表板</router-link>
 					</li>
 					<li>
 						<button @click="authStore.handleLogout">登出</button>

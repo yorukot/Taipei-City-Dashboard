@@ -10,12 +10,12 @@ The contentStore calls APIs to get content info and stores it.
 /* global gtag */
 
 import { defineStore } from "pinia";
-import http from "../router/axios";
-import router from "../router/index";
-import { useDialogStore } from "./dialogStore";
-import { useAuthStore } from "./authStore";
 import { getComponentDataTimeframe } from "../assets/utilityFunctions/dataTimeframe";
 import { CityManager } from "../dashboardComponent/utilities/cityManager";
+import http from "../router/axios";
+import router from "../router/index";
+import { useAuthStore } from "./authStore";
+import { useDialogStore } from "./dialogStore";
 
 export const useContentStore = defineStore("content", {
 	state: () => ({

@@ -1,5 +1,5 @@
-import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
+import { defineConfig } from "vite";
 import viteCompression from "vite-plugin-compression";
 
 // 嘗試讀取環境變數，若不存在則回傳 false

@@ -194,9 +194,9 @@ function isShowTimeToBlock(time_to) {
 								<option value="static">固定資料</option>
 								<option value="current">即時資料</option>
 							</select>
-							<span v-show="isShowTimeToBlock(params.time_from)"
-								>～</span
-							>
+							<span v-show="isShowTimeToBlock(params.time_from)">
+								～
+							</span>
 							<select
 								v-show="isShowTimeToBlock(params.time_from)"
 								v-model="params.time_to"
@@ -315,12 +315,9 @@ function isShowTimeToBlock(time_to) {
 								required
 							/>
 							<label>地圖{{ index + 1 }} 類型*</label>
-							<label
-								>地圖{{
-									index + 1
-								}}
-								預設變形（大小/圖示）</label
-							>
+							<label>
+								地圖{{ index + 1 }} 預設變形（大小/圖示）
+							</label>
 							<div class="two-block">
 								<select
 									:disabled="

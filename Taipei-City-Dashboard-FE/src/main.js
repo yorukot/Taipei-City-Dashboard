@@ -10,17 +10,17 @@
 
 // Import the Essentials
 import { createApp } from "vue";
-import "./assets/styles/globalStyles.css";
-import "./assets/styles/chartStyles.css";
-import "./assets/styles/toggleswitch.css";
 import App from "./App.vue";
+import "./assets/styles/chartStyles.css";
+import "./assets/styles/globalStyles.css";
+import "./assets/styles/toggleswitch.css";
 
 // Import Core Packages: Vue-Router, Pinia, Apexcharts
-import router from "./router";
+import debounce from "lodash.debounce";
 import { createPinia } from "pinia";
 import VueApexCharts from "vue3-apexcharts";
-import debounce from "lodash.debounce";
 import horizontalWheel from "./directives/horizontalWheel";
+import router from "./router";
 
 const app = createApp(App);
 

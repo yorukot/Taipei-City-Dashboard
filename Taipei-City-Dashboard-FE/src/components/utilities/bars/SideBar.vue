@@ -88,11 +88,13 @@ onMounted(() => {
 				class="sidebar-collapse-btnContainer-button"
 				@click="toggleExpand"
 			>
-				<span>{{
-					isExpanded
-						? "keyboard_double_arrow_left"
-						: "keyboard_double_arrow_right"
-				}}</span>
+				<span>
+					{{
+						isExpanded
+							? "keyboard_double_arrow_left"
+							: "keyboard_double_arrow_right"
+					}}
+				</span>
 			</button>
 		</div>
 		<template v-if="authStore.token">
@@ -120,7 +122,8 @@ onMounted(() => {
 					v-if="isExpanded && !collapsedStates.personal"
 					@click="handleOpenAddDashboard"
 				>
-					<span>add_circle_outline</span>新增
+					<span>add_circle_outline</span>
+					新增
 				</button>
 			</div>
 			<div

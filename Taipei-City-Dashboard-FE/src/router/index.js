@@ -9,15 +9,15 @@
 /* Department of Information Technology, Taipei City Government */
 
 import { createRouter, createWebHistory } from "vue-router";
+import { useAdminStore } from "../store/adminStore";
+import { useAuthStore } from "../store/authStore";
 import { useContentStore } from "../store/contentStore";
 import { useMapStore } from "../store/mapStore";
-import { useAuthStore } from "../store/authStore";
-import { useAdminStore } from "../store/adminStore";
-import DashboardView from "../views/DashboardView.vue";
-import MapView from "../views/MapView.vue";
-import ComponentView from "../views/ComponentView.vue";
 import ComponentInfoView from "../views/ComponentInfoView.vue";
+import ComponentView from "../views/ComponentView.vue";
+import DashboardView from "../views/DashboardView.vue";
 import EmbedView from "../views/EmbedView.vue";
+import MapView from "../views/MapView.vue";
 
 const routes = [
 	{

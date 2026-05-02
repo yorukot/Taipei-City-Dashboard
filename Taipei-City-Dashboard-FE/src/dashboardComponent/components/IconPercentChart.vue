@@ -86,8 +86,8 @@ function updateMouseLocation(e) {
 				class="iconPercentageChart__content"
 			>
 				<h2>
-					{{ item.name
-					}}<span
+					{{ item.name }}
+					<span
 						class="iconPercentageChart__percentage"
 						:style="{
 							color:
@@ -95,12 +95,13 @@ function updateMouseLocation(e) {
 									? chart_config.color[0]
 									: chart_config.color[1],
 						}"
-						>{{
+					>
+						{{
 							index === 0
 								? primaryPercentage
 								: 100 - primaryPercentage
-						}}</span
-					>
+						}}
+					</span>
 					％
 				</h2>
 				<p>總數：{{ item.data[activeIndex] }}{{ chart_config.unit }}</p>

@@ -111,14 +111,13 @@ function handleClose() {
 											? 'rgb(237, 90, 90)'
 											: 'greenyellow',
 								}"
-								>{{ indexStatus }}</span
 							>
+								{{ indexStatus }}
+							</span>
 						</div>
-						<label
-							>名稱* ({{
-								currentDashboard.name.length
-							}}/10)</label
-						>
+						<label>
+							名稱* ({{ currentDashboard.name.length }}/10)
+						</label>
 						<input
 							v-model="currentDashboard.name"
 							:minlength="1"
@@ -148,11 +147,9 @@ function handleClose() {
 					</div>
 				</div>
 				<div class="adminaddeditdashboards-settings">
-					<label
-						>{{
-							mode === "edit" ? "編輯" : "新增"
-						}}儀表板組件</label
-					>
+					<label>
+						{{ mode === "edit" ? "編輯" : "新增" }}儀表板組件
+					</label>
 					<div class="adminaddeditdashboards-settings-components">
 						<ComponentDragTags
 							:tags="currentDashboard.components"

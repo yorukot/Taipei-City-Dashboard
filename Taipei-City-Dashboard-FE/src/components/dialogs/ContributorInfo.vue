@@ -35,13 +35,14 @@ function handleClose() {
 				</p>
 				<label>貢獻項目</label>
 				<p>{{ contributor.description }}</p>
-				<a :href="contributor.link" target="_blank" rel="noreferrer"
-					>{{
+				<a :href="contributor.link" target="_blank" rel="noreferrer">
+					{{
 						contributor.link.includes("github")
 							? "GitHub "
 							: "相關"
-					}}連結 <span>open_in_new</span></a
-				>
+					}}連結
+					<span>open_in_new</span>
+				</a>
 			</div>
 		</div>
 	</DialogContainer>

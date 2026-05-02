@@ -62,7 +62,7 @@ onMounted(() => {
 	<DialogContainer :dialog="`incidentReport`" @on-close="handleClose">
 		<div class="incidentreport">
 			<h2>事件通報</h2>
-			<label> 事件類型 </label>
+			<label>事件類型</label>
 			<select v-model="incidentType">
 				<option
 					v-for="(option, index) in typeOptions"
@@ -73,7 +73,7 @@ onMounted(() => {
 				</option>
 			</select>
 
-			<label> 事件描述 ({{ incidentDesc.length }}/30) </label>
+			<label>事件描述 ({{ incidentDesc.length }}/30)</label>
 			<input
 				v-model="incidentDesc"
 				type="text"
@@ -81,7 +81,7 @@ onMounted(() => {
 				required
 				:maxlength="30"
 			/>
-			<label> 事件發生位置 </label>
+			<label>事件發生位置</label>
 			<select v-model="incidentDis">
 				<option
 					v-for="(option, index) in disOptions"
@@ -91,7 +91,7 @@ onMounted(() => {
 					{{ option.label }}
 				</option>
 			</select>
-			<label> 通報位置 </label>
+			<label>通報位置</label>
 			<!-- <input :value="parseTime(editUser.login_at)" disabled /> -->
 			<input
 				:value="
@@ -101,7 +101,7 @@ onMounted(() => {
 				"
 				disabled
 			/>
-			<label> 通報時間 </label>
+			<label>通報時間</label>
 			<input :value="new Date().toLocaleString()" disabled />
 			<div class="incidentreport-control">
 				<button

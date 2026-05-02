@@ -108,7 +108,7 @@ function handleClose() {
 					/>
 
 					<template v-if="props.mode === 'edit'">
-						<label> 最後更新時間 </label>
+						<label>最後更新時間</label>
 						<input
 							:value="parseTime(currentContributor.created_at)"
 							disabled

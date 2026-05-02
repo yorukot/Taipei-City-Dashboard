@@ -32,8 +32,9 @@ defineEmits(["sort"]);
 						color:
 							mode === 'asc' ? 'var(--color-highlight)' : 'white',
 					}"
-					>arrow_drop_up</span
 				>
+					arrow_drop_up
+				</span>
 				<span
 					:style="{
 						color:
@@ -41,8 +42,9 @@ defineEmits(["sort"]);
 								? 'var(--color-highlight)'
 								: 'white',
 					}"
-					>arrow_drop_down</span
 				>
+					arrow_drop_down
+				</span>
 			</div>
 		</div>
 		<div v-else class="tableheader">

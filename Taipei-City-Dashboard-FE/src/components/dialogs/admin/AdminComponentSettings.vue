@@ -85,11 +85,9 @@ function handleClose() {
 						v-if="currentSettings === 'all'"
 						class="admincomponentsettings-settings-items"
 					>
-						<label
-							>組件名稱* ({{
-								currentComponent.name.length
-							}}/10)</label
-						>
+						<label>
+							組件名稱* ({{ currentComponent.name.length }}/10)
+						</label>
 						<input
 							v-model="currentComponent.name"
 							type="text"
@@ -206,33 +204,33 @@ function handleClose() {
 								:disabled="true"
 							/>
 						</div>
-						<label required
-							>組件簡述* ({{
+						<label required>
+							組件簡述* ({{
 								currentComponent.short_desc.length
-							}}/50)</label
-						>
+							}}/50)
+						</label>
 						<textarea
 							v-model="currentComponent.short_desc"
 							:minlength="1"
 							:maxlength="50"
 							required
 						/>
-						<label
-							>組件詳述* ({{
+						<label>
+							組件詳述* ({{
 								currentComponent.long_desc.length
-							}}/100)</label
-						>
+							}}/100)
+						</label>
 						<textarea
 							v-model="currentComponent.long_desc"
 							:minlength="1"
 							:maxlength="100"
 							required
 						/>
-						<label
-							>範例情境* ({{
+						<label>
+							範例情境* ({{
 								currentComponent.use_case.length
-							}}/100)</label
-						>
+							}}/100)
+						</label>
 						<textarea
 							v-model="currentComponent.use_case"
 							:minlength="1"
@@ -381,10 +379,9 @@ function handleClose() {
 						v-else-if="currentSettings === 'history'"
 						class="admincomponentsettings-settings-items"
 					>
-						<label
-							>歷史軸時間區間
-							(依點擊順序排列，資料無法預覽)</label
-						>
+						<label>
+							歷史軸時間區間 (依點擊順序排列，資料無法預覽)
+						</label>
 						<SelectButtons
 							:tags="[
 								'month_ago',
@@ -470,12 +467,12 @@ function handleClose() {
 								/>
 							</div>
 
-							<label
-								>地圖{{ index + 1 }} 名稱* ({{
+							<label>
+								地圖{{ index + 1 }} 名稱* ({{
 									currentComponent.map_config[index].title
 										.length
-								}}/10)</label
-							>
+								}}/10)
+							</label>
 							<input
 								v-model="
 									currentComponent.map_config[index].title
@@ -499,12 +496,9 @@ function handleClose() {
 									{{ value }}
 								</option>
 							</select>
-							<label
-								>地圖{{
-									index + 1
-								}}
-								預設變形（大小/圖示）</label
-							>
+							<label>
+								地圖{{ index + 1 }} 預設變形（大小/圖示）
+							</label>
 							<div class="two-block">
 								<select
 									v-model="

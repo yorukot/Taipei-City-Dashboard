@@ -39,11 +39,13 @@ onMounted(() => {
 		}"
 	>
 		<button class="adminsidebar-collapse-button" @click="toggleExpand">
-			<span>{{
-				isExpanded
-					? "keyboard_double_arrow_left"
-					: "keyboard_double_arrow_right"
-			}}</span>
+			<span>
+				{{
+					isExpanded
+						? "keyboard_double_arrow_left"
+						: "keyboard_double_arrow_right"
+				}}
+			</span>
 		</button>
 		<h2>{{ isExpanded ? `儀表板設定` : `表板` }}</h2>
 		<template

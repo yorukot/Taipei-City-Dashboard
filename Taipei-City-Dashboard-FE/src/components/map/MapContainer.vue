@@ -145,8 +145,9 @@ onMounted(() => {
 				title="通報災害"
 				@click="dialogStore.showDialog('incidentReport')"
 			>
-				!</button
-			><!-- The key prop informs vue that the component should be updated when switching dashboards -->
+				!
+			</button>
+			<!-- The key prop informs vue that the component should be updated when switching dashboards -->
 			<MobileLayers :key="contentStore.currentDashboard.index" />
 			<IncidentReport />
 			<FindClosestPoint />

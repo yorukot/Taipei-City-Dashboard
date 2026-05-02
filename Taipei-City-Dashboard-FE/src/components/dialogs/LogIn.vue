@@ -86,7 +86,8 @@ function handleClose() {
 			</div>
 			<div v-if="loginMode === 'tp'" class="login-form">
 				<button @click="handleTaipeiPassLogin">
-					<img src="../../assets/images/taipeipass.png" />台北通登入
+					<img src="../../assets/images/taipeipass.png" />
+					台北通登入
 				</button>
 			</div>
 			<div v-if="loginMode === 'email'" class="login-form">

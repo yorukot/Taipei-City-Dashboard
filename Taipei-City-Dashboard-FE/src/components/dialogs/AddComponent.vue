@@ -100,8 +100,9 @@ onMounted(() => {
 										handleSearch();
 									}
 								"
-								>cancel</span
 							>
+								cancel
+							</span>
 						</div>
 						<div>
 							<input
@@ -118,8 +119,9 @@ onMounted(() => {
 										handleSearch();
 									}
 								"
-								>cancel</span
 							>
+								cancel
+							</span>
 						</div>
 					</div>
 					<div>
@@ -128,7 +130,8 @@ onMounted(() => {
 							v-if="componentsSelected?.length > 0"
 							@click="handleSubmit"
 						>
-							<span>add_chart</span>確認新增
+							<span>add_chart</span>
+							確認新增
 						</button>
 					</div>
 				</div>

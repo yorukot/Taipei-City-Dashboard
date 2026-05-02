@@ -67,10 +67,10 @@ onMounted(() => {
 					<TableHeader min-width="150px" @sort="handleSort('id')">
 						Index
 					</TableHeader>
-					<TableHeader min-width="180px"> 名稱 </TableHeader>
-					<TableHeader min-width="480px"> 組件 </TableHeader>
-					<TableHeader min-width="40px"> 圖示 </TableHeader>
-					<TableHeader min-width="200px"> 上次編輯 </TableHeader>
+					<TableHeader min-width="180px">名稱</TableHeader>
+					<TableHeader min-width="480px">組件</TableHeader>
+					<TableHeader min-width="40px">圖示</TableHeader>
+					<TableHeader min-width="200px">上次編輯</TableHeader>
 				</tr>
 			</thead>
 			<!-- 2-1. Dashboards are present -->

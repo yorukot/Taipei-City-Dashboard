@@ -1,5 +1,18 @@
 {
-	"editor.formatOnSave": true,
+	"bracketSpacing": true,
+	"arrowParens": "always",
+	"requirePragma": false,
+	"insertPragma": false,
+	"proseWrap": "never",
+	"endOfLine": "lf",
+	"htmlWhitespaceSensitivity": "ignore",
+	"embeddedLanguageFormatting": "auto",
+	"quoteProps": "as-needed",
+	"singleAttributePerLine": false,
+	"plugins": [
+		"prettier-plugin-organize-imports",
+		"prettier-plugin-packagejson"
+	],
 	"overrides": [
 		{
 			"files": ".prettierrc",

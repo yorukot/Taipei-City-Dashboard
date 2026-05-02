@@ -82,7 +82,8 @@ function handleClose() {
 						<p>管理員</p>
 					</div>
 					<div class="two-block">
-						<label>API白名單</label><label>API黑名單</label>
+						<label>API白名單</label>
+						<label>API黑名單</label>
 					</div>
 					<div class="two-block">
 						<label class="toggleswitch">
@@ -119,7 +120,7 @@ function handleClose() {
 						<p>啟用</p>
 					</div>
 
-					<label> 最近登入時間 </label>
+					<label>最近登入時間</label>
 					<input :value="parseTime(currentUser.login_at)" disabled />
 				</div>
 			</div>

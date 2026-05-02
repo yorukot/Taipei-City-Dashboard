@@ -110,9 +110,9 @@ onMounted(() => {
 					>
 						ID
 					</TableHeader>
-					<TableHeader min-width="300px"> 標題 </TableHeader>
-					<TableHeader min-width="350px"> 系統標籤 </TableHeader>
-					<TableHeader min-width="110px"> 狀態 </TableHeader>
+					<TableHeader min-width="300px">標題</TableHeader>
+					<TableHeader min-width="350px">系統標籤</TableHeader>
+					<TableHeader min-width="110px">狀態</TableHeader>
 					<TableHeader
 						:sort="true"
 						:mode="
@@ -125,7 +125,7 @@ onMounted(() => {
 					>
 						開立時間
 					</TableHeader>
-					<TableHeader min-width="110px"> 上次編輯人 </TableHeader>
+					<TableHeader min-width="110px">上次編輯人</TableHeader>
 					<TableHeader
 						:sort="true"
 						:mode="

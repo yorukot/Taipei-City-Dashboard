@@ -34,7 +34,7 @@ function handleClose() {
 	<DialogContainer :dialog="`contributorsList`" @on-close="handleClose">
 		<div class="contributorslist">
 			<h2>專案貢獻者清單</h2>
-			<label> 點擊貢獻者頭貼以了解更多 </label>
+			<label>點擊貢獻者頭貼以了解更多</label>
 			<div class="contributorslist-list">
 				<button
 					v-for="contributor in parsedContributors"

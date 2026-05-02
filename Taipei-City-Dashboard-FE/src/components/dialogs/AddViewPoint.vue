@@ -59,11 +59,11 @@ function handleAddViewPoint() {
 				</button>
 			</div>
 			<div class="addviewpoint-content">
-				<label
-					>{{ name === "addPin" ? "地標" : "視角" }}名稱 ({{
+				<label>
+					{{ name === "addPin" ? "地標" : "視角" }}名稱 ({{
 						viewPoint.name.length
-					}}/10)</label
-				>
+					}}/10)
+				</label>
 				<input
 					v-model="viewPoint.name"
 					maxlength="10"

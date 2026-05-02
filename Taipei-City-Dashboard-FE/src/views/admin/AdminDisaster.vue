@@ -149,11 +149,11 @@ onMounted(() => {
 					>
 						ID
 					</TableHeader>
-					<TableHeader min-width="150px"> 種類 </TableHeader>
-					<TableHeader min-width="250px"> 描述 </TableHeader>
-					<TableHeader min-width="320px"> 地點 </TableHeader>
-					<TableHeader min-width="180px"> 時間 </TableHeader>
-					<TableHeader min-width="200px"> 審核 </TableHeader>
+					<TableHeader min-width="150px">種類</TableHeader>
+					<TableHeader min-width="250px">描述</TableHeader>
+					<TableHeader min-width="320px">地點</TableHeader>
+					<TableHeader min-width="180px">時間</TableHeader>
+					<TableHeader min-width="200px">審核</TableHeader>
 				</tr>
 			</thead>
 			<!-- 2-1. Disasters are present -->

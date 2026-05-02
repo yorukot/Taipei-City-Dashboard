@@ -79,8 +79,9 @@ function getLinkTag(link, index) {
 								:href="link"
 								target="_blank"
 								rel="noreferrer"
-								>{{ getLinkTag(link, index) }}</a
 							>
+								{{ getLinkTag(link, index) }}
+							</a>
 						</div>
 					</div>
 					<div v-if="dialogStore.moreInfoContent.contributors">
@@ -98,7 +99,8 @@ function getLinkTag(link, index) {
 									"
 									target="_blank"
 									rel="noreferrer"
-									><img
+								>
+									<img
 										:src="
 											contentStore.contributors[
 												contributor
@@ -126,7 +128,8 @@ function getLinkTag(link, index) {
 							)
 						"
 					>
-						<span>flag</span>回報
+						<span>flag</span>
+						回報
 					</button>
 					<button
 						v-if="
@@ -135,10 +138,12 @@ function getLinkTag(link, index) {
 						"
 						@click="dialogStore.showDialog('downloadData')"
 					>
-						<span>download</span>下載
+						<span>download</span>
+						下載
 					</button>
 					<button @click="dialogStore.showDialog('embedComponent')">
-						<span>code</span>內嵌
+						<span>code</span>
+						內嵌
 					</button>
 				</div>
 				<DownloadData />

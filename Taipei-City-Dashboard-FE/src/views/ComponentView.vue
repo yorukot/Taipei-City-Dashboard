@@ -70,8 +70,9 @@ onMounted(() => {
 						handleNewQuery();
 					}
 				"
-				>cancel</span
 			>
+				cancel
+			</span>
 		</div>
 		<button @click="handleNewQuery">搜尋</button>
 	</div>
