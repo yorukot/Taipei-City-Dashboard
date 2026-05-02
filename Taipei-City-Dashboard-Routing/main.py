@@ -37,6 +37,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import routes as routing
 
+logging.basicConfig(
+    level=logging.INFO, format="%(levelname)-8s %(name)s: %(message)s"
+)
 log = logging.getLogger("taipei-routing")
 
 PROBLEM_MEDIA_TYPE = "application/problem+json"
@@ -148,7 +151,9 @@ def _safe_plan(
     edges = (result.get("data") or {}).get("planConnection", {}).get("edges") or []
     if not edges:
         raise NoItinerary()
-    return [edge["node"] for edge in edges]
+    nodes = [edge["node"] for edge in edges]
+    nodes.sort(key=lambda n: n["end"])
+    return nodes
 
 
 def _plan_with_first(

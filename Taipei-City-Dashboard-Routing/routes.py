@@ -17,9 +17,12 @@ GTFS GraphQL API (`/otp/gtfs/v1`) with a `planConnection` query.
 from __future__ import annotations
 
 import datetime as dt
+import logging
 from dataclasses import dataclass
 
 import requests
+
+log = logging.getLogger("taipei-routing.geocode")
 
 # --- Configuration ----------------------------------------------------------
 
@@ -69,8 +72,17 @@ def geocode(address: str) -> Place:
     resp.raise_for_status()
     results = resp.json()
     if not results:
+        log.info("geocode miss: %r", address)
         raise ValueError(f"No geocoding result for: {address}")
     top = results[0]
+    log.info(
+        "geocoded %r -> (%s, %s) %r (%d candidates)",
+        address,
+        top["lat"],
+        top["lon"],
+        top.get("display_name", ""),
+        len(results),
+    )
     return Place(label=address, lat=float(top["lat"]), lon=float(top["lon"]))
 
 
@@ -105,6 +117,8 @@ query Plan(
   ) {
     edges {
       node {
+        start
+        end
         duration
         walkDistance
         numberOfTransfers
@@ -227,6 +241,7 @@ def main() -> None:
     edges = plan["data"]["planConnection"]["edges"]
     if not edges:
         raise SystemExit("No itineraries found.")
+    edges.sort(key=lambda e: e["node"]["end"])
     for i, edge in enumerate(edges, 1):
         print_itinerary(edge["node"], i)
 
