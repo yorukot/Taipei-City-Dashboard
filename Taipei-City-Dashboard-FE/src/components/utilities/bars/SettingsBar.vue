@@ -13,6 +13,7 @@ import { useMapStore } from "../../../store/mapStore";
 import AddEditDashboards from "../../dialogs/AddEditDashboards.vue";
 import MobileNavigation from "../../dialogs/MobileNavigation.vue";
 import AddViewPoint from "../../dialogs/AddViewPoint.vue";
+import TimeRangePicker from "./TimeRangePicker.vue";
 
 const contentStore = useContentStore();
 const dialogStore = useDialogStore();
@@ -61,20 +62,29 @@ function handleOpenSettings() {
 			</div>
 			<AddEditDashboards />
 		</div>
-		<button
-			v-if="authStore.user?.user_id && isCurrentPageMapView"
-			class="settingsbar-pin hide-if-mobile"
-			:disabled="!mapStore.tempMarkerCoordinates"
-			:style="{
-				opacity: !mapStore.tempMarkerCoordinates ? 0.5 : 1,
-				cursor: !mapStore.tempMarkerCoordinates
-					? 'not-allowed'
-					: 'pointer',
-			}"
-			@click="dialogStore.showDialog('addPin')"
-		>
-			{{ mapStore.tempMarkerCoordinates ? "新增地標" : "雙擊以建立地標" }}
-		</button>
+
+		<!-- Right-side controls -->
+		<div class="settingsbar-right hide-if-mobile">
+			<TimeRangePicker />
+			<button
+				v-if="authStore.user?.user_id && isCurrentPageMapView"
+				class="settingsbar-pin"
+				:disabled="!mapStore.tempMarkerCoordinates"
+				:style="{
+					opacity: !mapStore.tempMarkerCoordinates ? 0.5 : 1,
+					cursor: !mapStore.tempMarkerCoordinates
+						? 'not-allowed'
+						: 'pointer',
+				}"
+				@click="dialogStore.showDialog('addPin')"
+			>
+				{{
+					mapStore.tempMarkerCoordinates
+						? "新增地標"
+						: "雙擊以建立地標"
+				}}
+			</button>
+		</div>
 	</div>
 	<AddViewPoint name="addPin" />
 </template>
@@ -163,6 +173,13 @@ function handleOpenSettings() {
 		padding: 2px 4px;
 		border-radius: 4px;
 		background-color: var(--color-highlight);
+	}
+
+	&-right {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-shrink: 0;
 	}
 }
 </style>

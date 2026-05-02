@@ -55,6 +55,13 @@ export default defineConfig({
 		},
 		chunkSizeWarningLimit: 1600,
 	},
+	css: {
+		preprocessorOptions: {
+			scss: {
+				api: "modern-compiler",
+			},
+		},
+	},
 	base: "/",
 	server: serverConfig,
 });

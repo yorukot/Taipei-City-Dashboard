@@ -278,7 +278,9 @@ function returnChartComponent(name, svg) {
 					<h4 v-if="dataTime === '維護修復中'">
 						{{ `${config.source} | ` }}
 						<span>warning</span>
-						<h4>{{ `${dataTime}` }}</h4>
+						<h4 class="dataTime">
+							{{ `${dataTime}` }}
+						</h4>
 						<span>warning</span>
 					</h4>
 					<h4 v-else>
@@ -605,7 +607,7 @@ button:hover {
 				user-select: none;
 			}
 
-			h4 {
+			.dataTime {
 				color: rgb(237, 90, 90);
 			}
 		}
