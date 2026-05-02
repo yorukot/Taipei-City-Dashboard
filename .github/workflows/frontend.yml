@@ -1,13 +1,13 @@
-name: Website CI
+name: Frontend CI
 
 on:
   push:
     paths:
-      - "website/**"
+      - "Taipei-City-Dashboard-FE/**"
       - ".github/workflows/frontend.yml"
   pull_request:
     paths:
-      - "website/**"
+      - "Taipei-City-Dashboard-FE/**"
       - ".github/workflows/frontend.yml"
 
 permissions:
