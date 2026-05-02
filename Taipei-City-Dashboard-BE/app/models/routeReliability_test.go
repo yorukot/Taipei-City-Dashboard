@@ -1,110 +1,75 @@
 package models
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
 
-func TestClassifyBusArrivalError(t *testing.T) {
-	tests := []struct {
-		minutes float64
-		want    string
-	}{
-		{minutes: 5, want: RouteReliabilityGreen},
-		{minutes: 5.1, want: RouteReliabilityYellow},
-		{minutes: 10, want: RouteReliabilityYellow},
-		{minutes: 10.1, want: RouteReliabilityRed},
-	}
+func TestBuildTrainStationReliabilityMetrics(t *testing.T) {
+	metrics := buildTrainStationReliabilityMetrics(trainStationReliabilityAggregate{
+		OnTimeRate:      84.24,
+		DelayRate:       12.26,
+		SevereDelayRate: 3.5,
+		Count:           37,
+	})
 
-	for _, tt := range tests {
-		if got := classifyBusArrivalError(tt.minutes); got != tt.want {
-			t.Fatalf("expected %s for %.1f minutes, got %s", tt.want, tt.minutes, got)
-		}
+	assertMetric(t, metrics, "on_time_rate", "準點率", 84.2, "%")
+	assertMetric(t, metrics, "delay_rate", "誤點率", 12.3, "%")
+	assertMetric(t, metrics, "severe_delay_rate", "嚴重誤點率", 3.5, "%")
+	assertMetric(t, metrics, "sample_count", "樣本數", 37, "筆")
+}
+
+func TestBuildYouBikeAvailabilityMetrics(t *testing.T) {
+	rentMetrics := buildYouBikeAvailabilityMetrics("rent", 5.24, 19)
+	assertMetric(t, rentMetrics, "avg_available_rent_bikes", "平均可借車輛", 5.2, "輛")
+	assertMetric(t, rentMetrics, "rent_sample_count", "可借樣本數", 19, "筆")
+
+	returnMetrics := buildYouBikeAvailabilityMetrics("return", 8.26, 23)
+	assertMetric(t, returnMetrics, "avg_available_return_bikes", "平均可還空位", 8.3, "格")
+	assertMetric(t, returnMetrics, "return_sample_count", "可還樣本數", 23, "筆")
+}
+
+func TestAnalyzeRouteLegReliabilityUnsupportedMode(t *testing.T) {
+	got := analyzeRouteLegReliability(
+		RouteReliabilityLegRequest{ID: "mrt-1", Mode: "SUBWAY"},
+		timeForReliabilityTest(t),
+	)
+	if got.Available {
+		t.Fatal("expected unsupported subway mode to be unavailable")
+	}
+	if got.Mode != "SUBWAY" {
+		t.Fatalf("expected normalized mode SUBWAY, got %s", got.Mode)
+	}
+	if got.MatchQuality != "unavailable" {
+		t.Fatalf("expected unavailable match quality, got %s", got.MatchQuality)
+	}
+	if len(got.Metrics) != 0 {
+		t.Fatalf("expected no metrics for unsupported mode, got %d", len(got.Metrics))
 	}
 }
 
-func TestClassifyRailDelay(t *testing.T) {
-	tests := []struct {
-		severe float64
-		avg    float64
-		want   string
-	}{
-		{severe: 9.9, avg: 4.9, want: RouteReliabilityGreen},
-		{severe: 10, avg: 4.9, want: RouteReliabilityYellow},
-		{severe: 9.9, avg: 5, want: RouteReliabilityYellow},
-		{severe: 25, avg: 4.9, want: RouteReliabilityRed},
-		{severe: 9.9, avg: 10, want: RouteReliabilityRed},
+func TestRouteReliabilityJSONOmitsLegacyStatusFields(t *testing.T) {
+	payload, err := json.Marshal(RouteReliabilityOutput{
+		Legs: []RouteLegReliability{
+			{
+				ID:        "rail-1",
+				Mode:      "RAIL",
+				Available: true,
+				Metrics:   []RouteReliabilityMetric{},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected marshal to succeed, got %v", err)
 	}
 
-	for _, tt := range tests {
-		if got := classifyRailDelay(tt.severe, tt.avg); got != tt.want {
-			t.Fatalf("expected %s for severe %.1f avg %.1f, got %s", tt.want, tt.severe, tt.avg, got)
+	body := string(payload)
+	for _, legacyField := range []string{"route_status", "status", "label"} {
+		if strings.Contains(body, legacyField) {
+			t.Fatalf("expected response JSON to omit %q, got %s", legacyField, body)
 		}
-	}
-}
-
-func TestClassifyYouBikeSuccessRate(t *testing.T) {
-	tests := []struct {
-		rate float64
-		want string
-	}{
-		{rate: 70, want: RouteReliabilityGreen},
-		{rate: 69.9, want: RouteReliabilityYellow},
-		{rate: 40, want: RouteReliabilityYellow},
-		{rate: 39.9, want: RouteReliabilityRed},
-	}
-
-	for _, tt := range tests {
-		if got := classifyYouBikeSuccessRate(tt.rate); got != tt.want {
-			t.Fatalf("expected %s for %.1f%%, got %s", tt.want, tt.rate, got)
-		}
-	}
-}
-
-func TestAggregateRouteReliabilityStatus(t *testing.T) {
-	tests := []struct {
-		name string
-		legs []RouteLegReliability
-		want string
-	}{
-		{
-			name: "red wins",
-			legs: []RouteLegReliability{
-				{Status: RouteReliabilityGreen},
-				{Status: RouteReliabilityRed},
-			},
-			want: RouteReliabilityRed,
-		},
-		{
-			name: "yellow before green",
-			legs: []RouteLegReliability{
-				{Status: RouteReliabilityGreen},
-				{Status: RouteReliabilityYellow},
-			},
-			want: RouteReliabilityYellow,
-		},
-		{
-			name: "only green",
-			legs: []RouteLegReliability{
-				{Status: RouteReliabilityGreen},
-			},
-			want: RouteReliabilityGreen,
-		},
-		{
-			name: "only unknown",
-			legs: []RouteLegReliability{
-				{Status: RouteReliabilityUnknown},
-			},
-			want: RouteReliabilityUnknown,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := aggregateRouteReliabilityStatus(tt.legs); got != tt.want {
-				t.Fatalf("expected %s, got %s", tt.want, got)
-			}
-		})
 	}
 }
 
@@ -116,26 +81,40 @@ func TestParseReliabilityTime(t *testing.T) {
 	if got := taipeiHourBucket(parsed); got != "08:00" {
 		t.Fatalf("expected hour bucket 08:00, got %s", got)
 	}
-	if got := taipeiWeekdayName(parsed); got != "星期日" {
-		t.Fatalf("expected 星期日, got %s", got)
-	}
 
 	if _, err := parseReliabilityTime("bad-time"); err == nil {
 		t.Fatal("expected invalid time error")
 	}
 }
 
-func TestAnalyzeRouteLegReliabilityTreatsSubwayAsGreen(t *testing.T) {
-	got := analyzeRouteLegReliability(
-		RouteReliabilityLegRequest{ID: "mrt-1", Mode: "SUBWAY"},
-		timeForReliabilityTest(t),
-	)
-	if got.Status != RouteReliabilityGreen {
-		t.Fatalf("expected subway to be green, got %s", got.Status)
+func TestTrainStationNameCandidates(t *testing.T) {
+	candidates := trainStationNameCandidates("台北車站")
+	if !containsString(candidates, "臺北") {
+		t.Fatalf("expected candidates to include 臺北, got %#v", candidates)
 	}
-	if got.MatchQuality != "default" {
-		t.Fatalf("expected default match quality, got %s", got.MatchQuality)
+}
+
+func assertMetric(t *testing.T, metrics []RouteReliabilityMetric, key string, label string, value float64, unit string) {
+	t.Helper()
+	for _, metric := range metrics {
+		if metric.Key != key {
+			continue
+		}
+		if metric.Label != label || metric.Value != value || metric.Unit != unit {
+			t.Fatalf("unexpected metric for %s: %#v", key, metric)
+		}
+		return
 	}
+	t.Fatalf("metric %s not found in %#v", key, metrics)
+}
+
+func containsString(values []string, needle string) bool {
+	for _, value := range values {
+		if value == needle {
+			return true
+		}
+	}
+	return false
 }
 
 func timeForReliabilityTest(t *testing.T) time.Time {
