@@ -57,43 +57,38 @@ function closeOptions() {
 </script>
 
 <template>
-  <div class="selector-search-select">
-    <input
-      :value="searchText"
-      :placeholder="placeholder"
-      :disabled="disabled"
-      @focus="isOpen = true"
-      @input="updateSearch"
-      @blur="closeOptions"
-    >
-    <div
-      v-if="isOpen && !disabled"
-      class="selector-search-select-options"
-    >
-      <button
-        v-for="option in filteredOptions"
-        :key="option.value"
-        type="button"
-        :class="{
-          'selector-search-select-option': true,
-          'selector-search-select-option-active':
-            option.value === modelValue,
-        }"
-        @mousedown.prevent="chooseOption(option)"
-      >
-        {{ option.label }}
-      </button>
-      <p v-if="filteredOptions.length === 0">
-        查無站點
-      </p>
-    </div>
-  </div>
+	<div class="selector-search-select">
+		<input
+			:value="searchText"
+			:placeholder="placeholder"
+			:disabled="disabled"
+			@focus="isOpen = true"
+			@input="updateSearch"
+			@blur="closeOptions"
+		/>
+		<div v-if="isOpen && !disabled" class="selector-search-select-options">
+			<button
+				v-for="option in filteredOptions"
+				:key="option.value"
+				type="button"
+				:class="{
+					'selector-search-select-option': true,
+					'selector-search-select-option-active':
+						option.value === modelValue,
+				}"
+				@mousedown.prevent="chooseOption(option)"
+			>
+				{{ option.label }}
+			</button>
+			<p v-if="filteredOptions.length === 0">查無站點</p>
+		</div>
+	</div>
 </template>
 
 <style scoped lang="scss">
 .selector-search-select {
 	position: relative;
-	width: min(240px, 34vw);
+	width: min(240px, 100%);
 	overflow: visible;
 
 	input {
@@ -142,12 +137,6 @@ function closeOptions() {
 			background-color: rgba(255, 255, 255, 0.08);
 			color: var(--color-complement-text);
 		}
-	}
-}
-
-@media (max-width: 760px) {
-	.selector-search-select {
-		width: min(220px, 52vw);
 	}
 }
 </style>
