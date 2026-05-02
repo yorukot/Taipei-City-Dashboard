@@ -16,8 +16,8 @@
 	--font-s: 0.75rem;
 	--font-icon: "Material Icons Round";
 	--vh: 1vh;
-	
-	--color-taipei: #1411AC;
+
+	--color-taipei: #1411ac;
 	--color-metrotaipei: #ac7811;
 }
 
@@ -25,7 +25,8 @@
 	margin: 0;
 	padding: 0;
 	color: var(--color-normal-text);
-	font-family: "微軟正黑體", "Microsoft JhengHei", "Droid Sans", "Open Sans",
+	font-family:
+		"微軟正黑體", "Microsoft JhengHei", "Droid Sans", "Open Sans",
 		"Helvetica";
 	overflow: hidden;
 }
