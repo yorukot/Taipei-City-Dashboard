@@ -11,6 +11,14 @@ import {
 	routeGeometry,
 	transitLines,
 } from "../components/routePlanner/mockData.js";
+import http from "../router/axios";
+
+const RELIABILITY_META = {
+	green: { label: "可靠", color: "#3fb950" },
+	yellow: { label: "中等風險", color: "#d29922" },
+	red: { label: "不可靠", color: "#f85149" },
+	unknown: { label: "資料不足", color: "#8b949e" },
+};
 
 // ── Phase state ─────────────────────────────────────────────────────────
 // "form" → "list" → "detail"   (when backend planning)
@@ -26,6 +34,9 @@ const formData = reactive({
 });
 
 const selectedRoute = ref(null);
+const plannedRoutes = ref(cloneRoutes(mockRoutes));
+const reliabilityLoading = ref(false);
+const reliabilityError = ref(false);
 
 // Custom plan: user-built sequence of transit segments.
 const customPlan = reactive({ steps: [] });
@@ -48,6 +59,8 @@ const TRANSFER_BUFFER_MIN = 2;
 function submitForm() {
 	phase.value = "list";
 	selectedRoute.value = null;
+	plannedRoutes.value = cloneRoutes(mockRoutes);
+	analyzeRouteReliability();
 }
 
 function submitCustom() {
@@ -58,6 +71,7 @@ function submitCustom() {
 function backToForm() {
 	phase.value = "form";
 	selectedRoute.value = null;
+	reliabilityError.value = false;
 }
 
 function pickRoute(r) {
@@ -174,7 +188,7 @@ const mapGeometry = computed(() => {
 			defaultEndpoints.ORIGIN,
 			defaultEndpoints.DEST,
 		);
-		mockRoutes.forEach((r, i) => {
+		plannedRoutes.value.forEach((r, i) => {
 			const g = routeGeometry(r);
 			g.polylines.forEach((p) =>
 				merged.polylines.push({ ...p, id: `r${i}-${p.id}` }),
@@ -210,6 +224,172 @@ function transitIcons(route) {
 		}
 	});
 	return icons;
+}
+
+function cloneRoutes(routes) {
+	return routes.map((route) => ({
+		...route,
+		reliability: unknownReliability(),
+		steps: route.steps.map((step, idx) => ({
+			...step,
+			reliabilityId: routeStepReliabilityId(route.id, idx),
+			reliability: unknownReliability(),
+		})),
+	}));
+}
+
+async function analyzeRouteReliability() {
+	reliabilityLoading.value = true;
+	reliabilityError.value = false;
+	try {
+		const response = await http.post("/route/reliability", {
+			departure_time: toTaipeiIso(formData.date, formData.time),
+			legs: plannedRoutes.value.flatMap((route) =>
+				route.steps.map((step, idx) =>
+					toReliabilityLegRequest(route, step, idx),
+				),
+			),
+		});
+		const legReliabilities = response.data?.data?.legs || [];
+		mergeRouteReliability(legReliabilities);
+	} catch (err) {
+		reliabilityError.value = true;
+		plannedRoutes.value = plannedRoutes.value.map((route) => ({
+			...route,
+			reliability: unknownReliability("可靠度分析暫時無法取得"),
+			steps: route.steps.map((step) => ({
+				...step,
+				reliability: unknownReliability("可靠度分析暫時無法取得"),
+			})),
+		}));
+	} finally {
+		reliabilityLoading.value = false;
+	}
+}
+
+function toReliabilityLegRequest(route, step, idx) {
+	const fromName = stepPointName(step.from);
+	const toName = stepPointName(step.to);
+	const startTime = step.boardTime || route.boardTime || formData.time;
+	const endTime = step.alightTime || route.alightTime || startTime;
+
+	return {
+		id: routeStepReliabilityId(route.id, idx),
+		mode: reliabilityMode(step),
+		route_name: step.lineName || "",
+		from_name: fromName,
+		to_name: toName,
+		start_time: toTaipeiIso(formData.date, startTime),
+		end_time: toTaipeiIso(formData.date, endTime),
+		duration_seconds: (step.durationMin || 0) * 60,
+		station_uid: "",
+		pickup_station_uid: "",
+		return_station_uid: "",
+	};
+}
+
+function mergeRouteReliability(legReliabilities) {
+	const reliabilityById = legReliabilities.reduce((lookup, item) => {
+		lookup[item.id] = normalizeReliability(item);
+		return lookup;
+	}, {});
+
+	plannedRoutes.value = plannedRoutes.value.map((route) => {
+		const steps = route.steps.map((step) => ({
+			...step,
+			reliability:
+				reliabilityById[step.reliabilityId] ||
+				unknownReliability("查無此路段可靠度資料"),
+		}));
+		return {
+			...route,
+			steps,
+			reliability: {
+				...unknownReliability(),
+				status: aggregateRouteStatus(steps),
+				label: statusMeta(aggregateRouteStatus(steps)).label,
+				reason: routeReliabilityReason(steps),
+			},
+		};
+	});
+}
+
+function routeStepReliabilityId(routeId, idx) {
+	return `${routeId}-${idx}`;
+}
+
+function reliabilityMode(step) {
+	if (step.kind === "walk") return "WALK";
+	if (step.modeIcon === "directions_bus") return "BUS";
+	if (step.modeIcon === "subway") return "SUBWAY";
+	return "RAIL";
+}
+
+function stepPointName(point) {
+	if (!point) return "";
+	if (typeof point === "string") return stationOf(point)?.name || point;
+	return point.name || "";
+}
+
+function toTaipeiIso(date, hhmm) {
+	const safeTime = hhmm?.length === 5 ? `${hhmm}:00` : hhmm || "00:00:00";
+	return `${date}T${safeTime}+08:00`;
+}
+
+function normalizeReliability(item) {
+	const status = item?.status || "unknown";
+	const meta = statusMeta(status);
+	return {
+		status,
+		label: item?.label || meta.label,
+		reason: item?.reason || "查無可靠度資料",
+		metrics: item?.metrics || [],
+	};
+}
+
+function unknownReliability(reason = "尚未取得可靠度分析") {
+	return {
+		status: "unknown",
+		label: RELIABILITY_META.unknown.label,
+		reason,
+		metrics: [],
+	};
+}
+
+function statusMeta(status) {
+	return RELIABILITY_META[status] || RELIABILITY_META.unknown;
+}
+
+function aggregateRouteStatus(steps) {
+	const statuses = steps.map((step) => step.reliability?.status || "unknown");
+	if (statuses.includes("red")) return "red";
+	if (statuses.includes("yellow")) return "yellow";
+	if (statuses.includes("green")) return "green";
+	return "unknown";
+}
+
+function routeReliabilityReason(steps) {
+	const analyzed = steps.filter(
+		(step) => step.reliability?.status !== "unknown",
+	);
+	if (analyzed.length === 0) return "全路線暫無可靠度資料";
+	const risky = analyzed.find((step) =>
+		["red", "yellow"].includes(step.reliability.status),
+	);
+	if (risky) return risky.reliability.reason;
+	return "可分析路段皆為低風險";
+}
+
+function reliabilityOf(item) {
+	return item?.reliability || unknownReliability();
+}
+
+function reliabilityMetricText(reliability) {
+	if (!reliability?.metrics?.length) return "";
+	return reliability.metrics
+		.slice(0, 2)
+		.map((metric) => `${metric.label} ${metric.value}${metric.unit}`)
+		.join(" · ");
 }
 
 function stationOf(id) {
@@ -308,12 +488,18 @@ function showStationDetail(stationId) {
 							{{ formData.start }} → {{ formData.end }} ·
 							{{ formData.date }} {{ formData.time }} 出發
 						</p>
+						<p v-if="reliabilityLoading" class="rp-sub">
+							可靠度分析中...
+						</p>
+						<p v-else-if="reliabilityError" class="rp-sub">
+							可靠度分析暫時無法取得
+						</p>
 					</div>
 				</header>
 
 				<ul class="rp-routes">
 					<li
-						v-for="r in mockRoutes"
+						v-for="r in plannedRoutes"
 						:key="r.id"
 						class="rp-route"
 						@click="pickRoute(r)"
@@ -330,6 +516,17 @@ function showStationDetail(stationId) {
 							</div>
 							<span class="rp-route-duration">
 								{{ r.durationMin }} 分鐘
+							</span>
+						</div>
+						<div class="rp-route-reliability">
+							<span
+								class="rp-reliability-badge"
+								:class="`rp-reliability-badge--${reliabilityOf(r).status}`"
+							>
+								{{ reliabilityOf(r).label }}
+							</span>
+							<span class="rp-reliability-reason">
+								{{ reliabilityOf(r).reason }}
 							</span>
 						</div>
 						<div class="rp-route-icons">
@@ -373,6 +570,17 @@ function showStationDetail(stationId) {
 							}}
 							（{{ selectedRoute.durationMin }} 分鐘）
 						</p>
+						<div class="rp-route-reliability">
+							<span
+								class="rp-reliability-badge"
+								:class="`rp-reliability-badge--${reliabilityOf(selectedRoute).status}`"
+							>
+								{{ reliabilityOf(selectedRoute).label }}
+							</span>
+							<span class="rp-reliability-reason">
+								{{ reliabilityOf(selectedRoute).reason }}
+							</span>
+						</div>
 					</div>
 				</header>
 
@@ -479,6 +687,30 @@ function showStationDetail(stationId) {
 										</button>
 									</div>
 								</div>
+							</div>
+							<div
+								class="rp-step-reliability"
+								:class="`rp-step-reliability--${reliabilityOf(step).status}`"
+							>
+								<span
+									class="rp-reliability-badge"
+									:class="`rp-reliability-badge--${reliabilityOf(step).status}`"
+								>
+									{{ reliabilityOf(step).label }}
+								</span>
+								<span class="rp-step-reliability-reason">
+									{{ reliabilityOf(step).reason }}
+								</span>
+								<span
+									v-if="reliabilityMetricText(reliabilityOf(step))"
+									class="rp-step-reliability-metrics"
+								>
+									{{
+										reliabilityMetricText(
+											reliabilityOf(step),
+										)
+									}}
+								</span>
 							</div>
 						</div>
 					</li>
@@ -925,6 +1157,53 @@ function showStationDetail(stationId) {
 	margin-bottom: 6px;
 }
 
+.rp-route-reliability {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+	min-width: 0;
+}
+
+.rp-reliability-badge {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 7px;
+	border-radius: 4px;
+	font-size: 11px;
+	font-weight: 600;
+
+	&--green {
+		background-color: rgba(63, 185, 80, 0.16);
+		color: #3fb950;
+	}
+
+	&--yellow {
+		background-color: rgba(210, 153, 34, 0.16);
+		color: #d29922;
+	}
+
+	&--red {
+		background-color: rgba(248, 81, 73, 0.16);
+		color: #f85149;
+	}
+
+	&--unknown {
+		background-color: rgba(139, 148, 158, 0.16);
+		color: #8b949e;
+	}
+}
+
+.rp-reliability-reason {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--color-complement-text);
+	font-size: var(--font-s);
+}
+
 .rp-route-icon {
 	font-size: 18px;
 }
@@ -1005,6 +1284,43 @@ function showStationDetail(stationId) {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
+}
+
+.rp-step-reliability {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin-top: 8px;
+	padding: 7px 8px;
+	border-radius: 5px;
+	background-color: rgba(255, 255, 255, 0.035);
+	font-size: var(--font-s);
+
+	&--green {
+		border-left: 3px solid #3fb950;
+	}
+
+	&--yellow {
+		border-left: 3px solid #d29922;
+	}
+
+	&--red {
+		border-left: 3px solid #f85149;
+	}
+
+	&--unknown {
+		border-left: 3px solid #8b949e;
+	}
+}
+
+.rp-step-reliability-reason {
+	color: var(--color-normal-text);
+}
+
+.rp-step-reliability-metrics {
+	width: 100%;
+	color: var(--color-complement-text);
 }
 
 .rp-station-row {
