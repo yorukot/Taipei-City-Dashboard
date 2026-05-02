@@ -74,6 +74,23 @@ const formattedTimeToUpdate = computed(() => {
 	return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
 });
 
+// Drive the layout off the actual committed route, not authStore.currentPath.
+// authStore.currentPath is updated inside a beforeEach guard, so it changes
+// before the route commits — picking the new layout while RouterView still
+// holds the old component, which causes the layout/content flicker on tab
+// switches between dashboard / mapview / routeplanner.
+const layoutType = computed(() => {
+	const { name } = route;
+	if (!name) return null;
+	if (name === "embed") return "embed";
+	if (name === "callback") return "plain";
+	if (name === "dashboard" || name === "mapview") return "dashboard";
+	if (name === "routeplanner") return "routeplanner";
+	if (name.startsWith("admin")) return "admin";
+	if (name.includes("component")) return "component";
+	return "plain";
+});
+
 function reloadChartData() {
 	if (!["dashboard", "mapview"].includes(authStore.currentPath)) return;
 	contentStore.updateCurrentDashboardAllChartData();
@@ -221,15 +238,9 @@ onBeforeUnmount(() => {
 <template>
 	<div class="app-container">
 		<NotificationBar />
-		<NavBar v-if="authStore.currentPath !== 'embed'" />
+		<NavBar v-if="layoutType !== 'embed'" />
 		<!-- /mapview, /dashboard layouts -->
-		<div
-			v-if="
-				authStore.currentPath === 'mapview' ||
-				authStore.currentPath === 'dashboard'
-			"
-			class="app-content"
-		>
+		<div v-if="layoutType === 'dashboard'" class="app-content">
 			<SideBar />
 			<div class="app-content-main">
 				<SettingsBar />
@@ -237,26 +248,20 @@ onBeforeUnmount(() => {
 			</div>
 		</div>
 		<!-- /routeplanner layout — full-width, planner provides its own sidebar -->
-		<div
-			v-else-if="authStore.currentPath === 'routeplanner'"
-			class="app-content"
-		>
+		<div v-else-if="layoutType === 'routeplanner'" class="app-content">
 			<div class="app-content-main">
 				<RouterView />
 			</div>
 		</div>
 		<!-- /admin layouts -->
-		<div v-else-if="authStore.currentPath === 'admin'" class="app-content">
+		<div v-else-if="layoutType === 'admin'" class="app-content">
 			<AdminSideBar />
 			<div class="app-content-main">
 				<RouterView />
 			</div>
 		</div>
 		<!-- /component, /component/:index layouts -->
-		<div
-			v-else-if="authStore.currentPath.includes('component')"
-			class="app-content"
-		>
+		<div v-else-if="layoutType === 'component'" class="app-content">
 			<ComponentSideBar />
 			<div class="app-content-main">
 				<RouterView />
@@ -269,7 +274,7 @@ onBeforeUnmount(() => {
 		<LogIn />
 		<div
 			v-if="
-				['dashboard', 'mapview'].includes(authStore.currentPath) &&
+				layoutType === 'dashboard' &&
 				!authStore.isMobile &&
 				!authStore.isNarrowDevice
 			"
