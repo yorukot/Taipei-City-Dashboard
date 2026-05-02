@@ -1,7 +1,9 @@
+import busRouteStopDirectionLabels from "../configs/selectors/busRouteStopDirectionLabels.json";
 import newTaipeiStations from "../configs/selectors/newtaipei-stations.json";
 import taipeiStations from "../configs/selectors/taipei-stations.json";
 
 const selectorLabelRegistry = {
+	bus_route_stop_direction_labels: busRouteStopDirectionLabels,
 	youbike_station_labels: {
 		taipei: toYoubikeStationOptions(taipeiStations),
 		new_tpe: toYoubikeStationOptions(newTaipeiStations),
@@ -35,6 +37,16 @@ const youbikeSelectorConfig = {
 };
 
 const selectorConfigFallbacks = {
+	bus_top_delay_routes: {
+		selectors: [
+			{
+				key: "selector_1",
+				label: "站點",
+				type: "search-select",
+				label_key: "bus_route_stop_direction_labels",
+			},
+		],
+	},
 	youbike_availability_trend: youbikeSelectorConfig,
 	youbike_probability_trend: youbikeSelectorConfig,
 	train_station_reliability_trend: {

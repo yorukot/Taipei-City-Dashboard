@@ -14,10 +14,10 @@ import {
 import http from "../router/axios";
 
 const RELIABILITY_META = {
-	green: { label: "可靠", color: "#3fb950" },
-	yellow: { label: "中等風險", color: "#d29922" },
-	red: { label: "不可靠", color: "#f85149" },
-	unknown: { label: "資料不足", color: "#8b949e" },
+	green: { label: "可靠" },
+	yellow: { label: "中等風險" },
+	red: { label: "不可靠" },
+	unknown: { label: "資料不足" },
 };
 
 // ── Phase state ─────────────────────────────────────────────────────────
@@ -250,9 +250,11 @@ async function analyzeRouteReliability() {
 				),
 			),
 		});
-		const legReliabilities = response.data?.data?.legs || [];
+		const { data: responseBody } = response;
+		const { data: reliabilityPayload = {} } = responseBody || {};
+		const { legs: legReliabilities = [] } = reliabilityPayload;
 		mergeRouteReliability(legReliabilities);
-	} catch (err) {
+	} catch {
 		reliabilityError.value = true;
 		plannedRoutes.value = plannedRoutes.value.map((route) => ({
 			...route,
@@ -268,20 +270,33 @@ async function analyzeRouteReliability() {
 }
 
 function toReliabilityLegRequest(route, step, idx) {
-	const fromName = stepPointName(step.from);
-	const toName = stepPointName(step.to);
-	const startTime = step.boardTime || route.boardTime || formData.time;
-	const endTime = step.alightTime || route.alightTime || startTime;
+	const {
+		alightTime: stepAlightTime,
+		boardTime: stepBoardTime,
+		durationMin,
+		from,
+		lineName,
+		to,
+	} = step;
+	const {
+		alightTime: routeAlightTime,
+		boardTime: routeBoardTime,
+		id,
+	} = route;
+	const fromName = stepPointName(from);
+	const toName = stepPointName(to);
+	const startTime = stepBoardTime || routeBoardTime || formData.time;
+	const endTime = stepAlightTime || routeAlightTime || startTime;
 
 	return {
-		id: routeStepReliabilityId(route.id, idx),
+		id: routeStepReliabilityId(id, idx),
 		mode: reliabilityMode(step),
-		route_name: step.lineName || "",
+		route_name: lineName || "",
 		from_name: fromName,
 		to_name: toName,
 		start_time: toTaipeiIso(formData.date, startTime),
 		end_time: toTaipeiIso(formData.date, endTime),
-		duration_seconds: (step.durationMin || 0) * 60,
+		duration_seconds: (durationMin || 0) * 60,
 		station_uid: "",
 		pickup_station_uid: "",
 		return_station_uid: "",
@@ -301,13 +316,14 @@ function mergeRouteReliability(legReliabilities) {
 				reliabilityById[step.reliabilityId] ||
 				unknownReliability("查無此路段可靠度資料"),
 		}));
+		const routeStatus = aggregateRouteStatus(steps);
 		return {
 			...route,
 			steps,
 			reliability: {
 				...unknownReliability(),
-				status: aggregateRouteStatus(steps),
-				label: statusMeta(aggregateRouteStatus(steps)).label,
+				status: routeStatus,
+				label: statusMeta(routeStatus).label,
 				reason: routeReliabilityReason(steps),
 			},
 		};
@@ -337,20 +353,21 @@ function toTaipeiIso(date, hhmm) {
 }
 
 function normalizeReliability(item) {
-	const status = item?.status || "unknown";
+	const { label, metrics = [], reason, status = "unknown" } = item || {};
 	const meta = statusMeta(status);
 	return {
 		status,
-		label: item?.label || meta.label,
-		reason: item?.reason || "查無可靠度資料",
-		metrics: item?.metrics || [],
+		label: label || meta.label,
+		reason: reason || "查無可靠度資料",
+		metrics,
 	};
 }
 
 function unknownReliability(reason = "尚未取得可靠度分析") {
+	const { label } = RELIABILITY_META.unknown;
 	return {
 		status: "unknown",
-		label: RELIABILITY_META.unknown.label,
+		label,
 		reason,
 		metrics: [],
 	};
@@ -702,7 +719,11 @@ function showStationDetail(stationId) {
 									{{ reliabilityOf(step).reason }}
 								</span>
 								<span
-									v-if="reliabilityMetricText(reliabilityOf(step))"
+									v-if="
+										reliabilityMetricText(
+											reliabilityOf(step),
+										)
+									"
 									class="rp-step-reliability-metrics"
 								>
 									{{
