@@ -25,11 +25,13 @@ const serverConfig = isDockerCompose
 				"/api": {
 					target: "https://citydashboard.taipei/api/v1",
 					changeOrigin: true,
+					secure: false,
 					rewrite: (path) => path.replace(/^\/api/, ""),
 				},
 				"/geo_server": {
 					target: "https://citydashboard.taipei/geo_server/",
 					changeOrigin: true,
+					secure: false,
 					rewrite: (path) => path.replace(/^\/geo_server/, ""),
 				},
 			},
