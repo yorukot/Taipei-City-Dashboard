@@ -213,6 +213,8 @@ func configureRouteReliabilityRoutes() {
 	routeRoutes.Use(middleware.LimitAPIRequests(global.ComponentLimitAPIRequestsTimes, global.LimitRequestsDuration))
 	routeRoutes.Use(middleware.LimitTotalRequests(global.ComponentLimitTotalRequestsTimes, global.LimitRequestsDuration))
 	{
+		routeRoutes.GET("/", controllers.GetAllRoutes)
+		routeRoutes.GET("/:route_id/stops", controllers.GetAllStopByRouteID)
 		routeRoutes.POST("/reliability", controllers.GetRouteReliability)
 	}
 }
