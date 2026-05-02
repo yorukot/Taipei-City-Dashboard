@@ -2,6 +2,8 @@
 package models
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -112,6 +114,19 @@ type MapLegendData struct {
 	Value float64 `gorm:"column:value" json:"value"`
 }
 
+// ErrMissingChartSelector is returned when a query_chart requires a selector
+// query parameter but the request did not provide it.
+var ErrMissingChartSelector = errors.New("missing required chart selector")
+
+// ChartQueryParams contains all dynamic values supported by query_charts.query_chart.
+type ChartQueryParams struct {
+	TimeFrom         string
+	TimeTo           string
+	Selector1        string
+	Selector2        string
+	RequireSelectors bool
+}
+
 /* ----- Handlers ----- */
 
 func GetComponentChartDataQuery(id int, city string) (queryType string, queryString string, err error) {
@@ -199,19 +214,136 @@ Below are the parsing functions for the four data types:
 two_d, three_d, percent, and time. three_d and percent data share a common handler.
 */
 
-func GetTwoDimensionalData(query *string, timeFrom string, timeTo string) (chartDataOutput []TwoDimensionalDataOutput, err error) {
-	var chartData []TwoDimensionalData
-	var queryString string
+func buildChartQuery(query string, params ChartQueryParams) (queryString string, args []any, err error) {
+	queryString = query
 
-	// 1. Check if query contains substring '%s'. If so, the component can be queried by time.
-	if strings.Count(*query, "%s") == 2 {
-		queryString = fmt.Sprintf(*query, timeFrom, timeTo)
-	} else {
-		queryString = *query
+	// Preserve the legacy query format where exactly two %s placeholders mean
+	// timefrom and timeto.
+	if strings.Count(queryString, "%s") == 2 {
+		queryString = fmt.Sprintf(queryString, params.TimeFrom, params.TimeTo)
 	}
 
+	requiredSelectors := []struct {
+		name  string
+		value string
+	}{
+		{name: "selector_1", value: params.Selector1},
+		{name: "selector_2", value: params.Selector2},
+	}
+
+	for _, selector := range requiredSelectors {
+		if (params.RequireSelectors || hasNamedParam(queryString, selector.name)) && selector.value == "" {
+			return "", nil, fmt.Errorf("%w: %s", ErrMissingChartSelector, selector.name)
+		}
+	}
+
+	// query_charts uses :name placeholders, while GORM named args use @name.
+	queryString = normalizeChartNamedParams(queryString)
+
+	namedArgs := map[string]any{
+		"timefrom":   params.TimeFrom,
+		"timeto":     params.TimeTo,
+		"selector_1": params.Selector1,
+		"selector_2": params.Selector2,
+	}
+
+	for _, name := range []string{"timefrom", "timeto", "selector_1", "selector_2"} {
+		if hasNamedParam(queryString, name) {
+			args = append(args, sql.Named(name, namedArgs[name]))
+		}
+	}
+
+	return queryString, args, nil
+}
+
+func hasNamedParam(query string, name string) bool {
+	return hasNamedPlaceholder(query, ":"+name) || hasNamedPlaceholder(query, "@"+name)
+}
+
+func hasNamedPlaceholder(query string, placeholder string) bool {
+	searchFrom := 0
+	for {
+		idx := strings.Index(query[searchFrom:], placeholder)
+		if idx == -1 {
+			return false
+		}
+		idx += searchFrom
+		end := idx + len(placeholder)
+		if end >= len(query) || !isParamNameChar(query[end]) {
+			return true
+		}
+		searchFrom = end
+	}
+}
+
+func isParamNameChar(char byte) bool {
+	return char == '_' ||
+		(char >= 'a' && char <= 'z') ||
+		(char >= 'A' && char <= 'Z') ||
+		(char >= '0' && char <= '9')
+}
+
+func normalizeChartNamedParams(query string) string {
+	for _, name := range []string{"timefrom", "timeto", "selector_1", "selector_2"} {
+		query = replaceNamedPlaceholder(query, ":"+name, "@"+name)
+	}
+	return query
+}
+
+func replaceNamedPlaceholder(query string, placeholder string, replacement string) string {
+	searchFrom := 0
+	changed := false
+	var builder strings.Builder
+
+	for {
+		idx := strings.Index(query[searchFrom:], placeholder)
+		if idx == -1 {
+			if !changed {
+				return query
+			}
+			builder.WriteString(query[searchFrom:])
+			return builder.String()
+		}
+
+		idx += searchFrom
+		end := idx + len(placeholder)
+		if end < len(query) && isParamNameChar(query[end]) {
+			if changed {
+				builder.WriteString(query[searchFrom:end])
+			}
+			searchFrom = end
+			continue
+		}
+
+		if !changed {
+			builder.Grow(len(query))
+			changed = true
+		}
+		builder.WriteString(query[searchFrom:idx])
+		if strings.HasPrefix(query[end:], "::") {
+			builder.WriteString("(")
+			builder.WriteString(replacement)
+			builder.WriteString(")")
+		} else {
+			builder.WriteString(replacement)
+		}
+		searchFrom = end
+	}
+}
+
+func scanChartData(query *string, params ChartQueryParams, dest any) error {
+	queryString, args, err := buildChartQuery(*query, params)
+	if err != nil {
+		return err
+	}
+	return DBDashboard.Raw(queryString, args...).Scan(dest).Error
+}
+
+func GetTwoDimensionalData(query *string, params ChartQueryParams) (chartDataOutput []TwoDimensionalDataOutput, err error) {
+	var chartData []TwoDimensionalData
+
 	// 2. Get the data from the database
-	err = DBDashboard.Raw(queryString).Scan(&chartData).Error
+	err = scanChartData(query, params, &chartData)
 	if err != nil {
 		return chartDataOutput, err
 	}
@@ -225,19 +357,11 @@ func GetTwoDimensionalData(query *string, timeFrom string, timeTo string) (chart
 	return chartDataOutput, nil
 }
 
-func GetThreeDimensionalData(query *string, timeFrom string, timeTo string) (chartDataOutput []ThreeDimensionalDataOutput, categories []string, err error) {
+func GetThreeDimensionalData(query *string, params ChartQueryParams) (chartDataOutput []ThreeDimensionalDataOutput, categories []string, err error) {
 	var chartData []ThreeDimensionalData
-	var queryString string
-
-	// 1. Check if query contains substring '%s'. If so, the component can be queried by time.
-	if strings.Count(*query, "%s") == 2 {
-		queryString = fmt.Sprintf(*query, timeFrom, timeTo)
-	} else {
-		queryString = *query
-	}
 
 	// 2. Get the data from the database
-	err = DBDashboard.Raw(queryString).Scan(&chartData).Error
+	err = scanChartData(query, params, &chartData)
 	if err != nil {
 		return chartDataOutput, categories, err
 	}
@@ -281,19 +405,11 @@ func GetThreeDimensionalData(query *string, timeFrom string, timeTo string) (cha
 	return chartDataOutput, categories, nil
 }
 
-func GetTimeSeriesData(query *string, timeFrom string, timeTo string) (chartDataOutput []TimeSeriesDataOutput, err error) {
+func GetTimeSeriesData(query *string, params ChartQueryParams) (chartDataOutput []TimeSeriesDataOutput, err error) {
 	var chartData []TimeSeriesData
-	var queryString string
-
-	// 1. Check if query contains substring '%s'. If so, the component can be queried by time.
-	if strings.Count(*query, "%s") == 2 {
-		queryString = fmt.Sprintf(*query, timeFrom, timeTo)
-	} else {
-		queryString = *query
-	}
 
 	// 2. Get the data from the database
-	err = DBDashboard.Raw(queryString).Scan(&chartData).Error
+	err = scanChartData(query, params, &chartData)
 	if err != nil {
 		return chartDataOutput, err
 	}
@@ -324,18 +440,9 @@ func GetTimeSeriesData(query *string, timeFrom string, timeTo string) (chartData
 	return chartDataOutput, nil
 }
 
-func GetMapLegendData(query *string, timeFrom string, timeTo string) (chartData []MapLegendData, err error) {
-	var queryString string
-
-	// 1. Check if query contains substring '%s'. If so, the component can be queried by time.
-	if strings.Count(*query, "%s") == 2 {
-		queryString = fmt.Sprintf(*query, timeFrom, timeTo)
-	} else {
-		queryString = *query
-	}
-
+func GetMapLegendData(query *string, params ChartQueryParams) (chartData []MapLegendData, err error) {
 	// 2. Get the data from the database
-	err = DBDashboard.Raw(queryString).Scan(&chartData).Error
+	err = scanChartData(query, params, &chartData)
 	if err != nil {
 		return chartData, err
 	}

@@ -111,6 +111,7 @@ RUN set -eux; \
 
 ENV LD_LIBRARY_PATH=/usr/lib
 ENV GOCACHE=/tmp/go-build-cache
+ENV GOMODCACHE=/tmp/go-mod-cache
 
 COPY --from=model_export /out/onnx-e5 /opt/lm_model/onnx-e5
 

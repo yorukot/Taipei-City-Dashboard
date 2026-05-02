@@ -2,6 +2,7 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -10,6 +11,33 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+func handleComponentChartDataError(c *gin.Context, err error) {
+	status := http.StatusInternalServerError
+	if errors.Is(err, models.ErrMissingChartSelector) {
+		status = http.StatusBadRequest
+	}
+	c.JSON(status, gin.H{"status": "error", "message": err.Error()})
+}
+
+func resolveChartQueryType(queryType string) (baseQueryType string, requireSelectors bool, ok bool) {
+	switch queryType {
+	case "two_d", "three_d", "percent", "time", "map_legend":
+		return queryType, false, true
+	case "two_selector", "two_selectors", "two_selector_three_d":
+		return "three_d", true, true
+	case "two_selector_two_d":
+		return "two_d", true, true
+	case "two_selector_percent":
+		return "percent", true, true
+	case "two_selector_time":
+		return "time", true, true
+	case "two_selector_map_legend":
+		return "map_legend", true, true
+	default:
+		return "", false, false
+	}
+}
 
 /*
 GetComponentChartData retrieves the chart data for a component.
@@ -28,12 +56,12 @@ func GetComponentChartData(c *gin.Context) {
 	// 1.1 Get the city name from the URL
 	var query componentQuery
 	c.ShouldBindQuery(&query)
-	if !(query.City == "taipei" || query.City == "metrotaipei" || query.City == ""){
+	if !(query.City == "taipei" || query.City == "metrotaipei" || query.City == "") {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid City Name"})
 		return
 	}
 
-	if query.City == ""{
+	if query.City == "" {
 		query.City = "taipei"
 	}
 
@@ -48,38 +76,50 @@ func GetComponentChartData(c *gin.Context) {
 		return
 	}
 
-	timeFrom, timeTo, err:= util.GetTime(c)
+	timeFrom, timeTo, err := util.GetTime(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
+	chartQueryParams := models.ChartQueryParams{
+		TimeFrom:  timeFrom,
+		TimeTo:    timeTo,
+		Selector1: c.Query("selector_1"),
+		Selector2: c.Query("selector_2"),
+	}
+	baseQueryType, requireSelectors, ok := resolveChartQueryType(queryType)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid chart query type"})
+		return
+	}
+	chartQueryParams.RequireSelectors = requireSelectors
 
 	// 3. Get and parse the chart data based on chart data type
-	if queryType == "two_d" {
-		chartData, err := models.GetTwoDimensionalData(&queryString, timeFrom, timeTo)
+	if baseQueryType == "two_d" {
+		chartData, err := models.GetTwoDimensionalData(&queryString, chartQueryParams)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
+			handleComponentChartDataError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "success", "data": chartData})
-	} else if queryType == "three_d" || queryType == "percent" {
-		chartData, categories, err := models.GetThreeDimensionalData(&queryString, timeFrom, timeTo)
+	} else if baseQueryType == "three_d" || baseQueryType == "percent" {
+		chartData, categories, err := models.GetThreeDimensionalData(&queryString, chartQueryParams)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
+			handleComponentChartDataError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "success", "data": chartData, "categories": categories})
-	} else if queryType == "time" {
-		chartData, err := models.GetTimeSeriesData(&queryString, timeFrom, timeTo)
+	} else if baseQueryType == "time" {
+		chartData, err := models.GetTimeSeriesData(&queryString, chartQueryParams)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
+			handleComponentChartDataError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "success", "data": chartData})
-	} else if queryType == "map_legend" {
-		chartData, err := models.GetMapLegendData(&queryString, timeFrom, timeTo)
+	} else if baseQueryType == "map_legend" {
+		chartData, err := models.GetMapLegendData(&queryString, chartQueryParams)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
+			handleComponentChartDataError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "success", "data": chartData})
@@ -109,19 +149,19 @@ func GetComponentHistoryData(c *gin.Context) {
 	// 1.1 Get the city name from the URL
 	var query componentQuery
 	c.ShouldBindQuery(&query)
-	if !(query.City == "taipei" || query.City == "metrotaipei" || query.City == ""){
+	if !(query.City == "taipei" || query.City == "metrotaipei" || query.City == "") {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid City Name"})
 		return
 	}
 
-	if query.City == ""{
+	if query.City == "" {
 		query.City = "taipei"
 	}
 
 	timeFrom, timeTo, err := util.GetTime(c)
-		if err != nil {
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
-			return
+		return
 	}
 	// 2. Get the history data query from the database
 	queryHistory, err := models.GetComponentHistoryDataQuery(id, query.City, timeFrom, timeTo)
@@ -135,9 +175,9 @@ func GetComponentHistoryData(c *gin.Context) {
 	}
 
 	// 3. Get and parse the history data
-	chartData, err := models.GetTimeSeriesData(&queryHistory, timeFrom, timeTo)
+	chartData, err := models.GetTimeSeriesData(&queryHistory, models.ChartQueryParams{TimeFrom: timeFrom, TimeTo: timeTo})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
+		handleComponentChartDataError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success", "data": chartData})

@@ -218,3 +218,34 @@ Managed entirely via Docker Compose (Airflow scheduler/worker/webserver/flower).
 | `pre-develop` / `develop` | Build & push Docker images → deploy to prod (Azure AKS) |
 
 Image tag format: `{branch}-{8-char-sha}`. Helm values: `helm-chart/values-sit.yaml` or `values-prod.yaml`.
+# Repository Guidelines
+
+## Project Structure & Module Organization
+
+`Taipei-City-Dashboard-FE/` is the Vue 3/Vite frontend; use `src/` for app code, `public/` for static files, and `public/mapData/` for GeoJSON. `Taipei-City-Dashboard-BE/` is the Go API under `app/controllers`, `app/models`, `app/services`, `app/routes`, and `app/middleware`. `Taipei-City-Dashboard-DE/` contains Airflow DAGs in `dags/`, shared code in `dags/operators` and `dags/utils`, and tests in `dags/test`. Root `docker/`, `helm-chart/`, `sql/`, and `db-sample-data/` hold local services, deployment manifests, schemas, and seed data.
+
+## Build, Test, and Development Commands
+
+- Frontend: `cd Taipei-City-Dashboard-FE && npm ci` installs locked dependencies.
+- Frontend dev: `npm run dev` starts Vite; `npm run preview` serves the production build.
+- Frontend validation: `npm run lint` runs ESLint with auto-fix; `npm run build` lints and builds.
+- Backend: `cd Taipei-City-Dashboard-BE && go run main.go` runs the API; `go build -v ./...` matches CI.
+- Backend tests: `go test ./...` should pass when Go tests are added or changed.
+- Data engineering tests: from `Taipei-City-Dashboard-DE/`, run `python -m pytest dags/test`; run `python -m pytest cicd/utils` only with Google Cloud test configuration.
+- Full stack: create `docker/.env` from `docker/.env.template`, then follow `DOCKER.md`.
+
+## Coding Style & Naming Conventions
+
+Frontend code uses ES modules, Vue single-file components, and tab indentation enforced by `eslint.config.js`. Avoid `console.log`; `console.warn` and `console.error` are allowed. Keep Vue components in PascalCase, stores in `src/store`, routes in `src/router`, and helpers in `src/assets/utilityFunctions`. Go code must be `gofmt`/`go vet` clean, with lowercase package names and handlers split across controllers/services/models. Airflow DAG folders pair one Python DAG file with `job_config.json`.
+
+## Testing Guidelines
+
+Place Python tests as `test_*.py` near existing areas (`dags/test`, `cicd/utils`). Prefer small tests around transformations, SQL generation, queue routing, and DAG utilities. Frontend has no unit test script; validate UI changes with `npm run build` and browser checks. Backend changes should include focused Go tests where logic is isolated.
+
+## Commit & Pull Request Guidelines
+
+Recent history uses short, scoped summaries, often in Traditional Chinese, naming the affected ETL or module. Keep commits focused and put the changed area first. PRs must start from an issue, per `.github/PULL_REQUEST_TEMPLATE.md`; include the issue link, summary, type checkbox, tests run, and screenshots for visible frontend changes. Run relevant checks before review.
+
+## Security & Configuration Tips
+
+Never commit real secrets. Local values belong in ignored files such as `docker/.env` and `Taipei-City-Dashboard-FE/.env`. Keep Mapbox tokens, JWT secrets, salts, database passwords, and Qdrant keys out of source and PR screenshots.
