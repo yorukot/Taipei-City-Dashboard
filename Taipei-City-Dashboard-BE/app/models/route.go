@@ -1,19 +1,19 @@
 package models
 
 type Stop struct {
-	ID       int    `json:"-" gorm:"column:id;autoincrement;primaryKey"`
-	StopUID  string `json:"stop_id" gorm:"column:stop_id;type:varchar;not null"`
+	ID       int    `json:"id" gorm:"column:id;autoincrement;primaryKey"`
+	StopUID  string `json:"stop_uid" gorm:"column:stop_id;type:varchar;not null"`
 	StopName string `json:"stop_name" gorm:"column:stop_name;type:varchar;not null"`
 }
 
 type Route struct {
 	ID        int    `json:"-" gorm:"column:id;autoincrement;primaryKey"`
-	RouteUID  string `json:"route_id" gorm:"column:route_id;type:varchar;not null"`
+	RouteUID  string `json:"route_uid" gorm:"column:route_id;type:varchar;not null"`
 	RouteName string `json:"route_name" gorm:"column:route_name;type:varchar;not null"`
 }
 
 type StopRouteDataSource struct {
-	ID          int    `json:"-" gorm:"column:id;autoincrement;primaryKey"`
+	ID          int    `json:"id" gorm:"column:id;autoincrement;primaryKey"`
 	StopID      int    `json:"stop_id" gorm:"column:stop_id;not null"`
 	RouteID     int    `json:"route_id" gorm:"column:route_id;not null"`
 	DataSource  string `json:"data_source" gorm:"column:data_source;type:varchar;not null"`
