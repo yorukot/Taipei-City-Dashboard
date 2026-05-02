@@ -7,8 +7,6 @@ import http from "../router/axios";
 import DashboardComponent from "../dashboardComponent/DashboardComponent.vue";
 import { useContentStore } from "../store/contentStore";
 
-import { getComponentDataTimeframe } from "../assets/utilityFunctions/dataTimeframe";
-
 const contentStore = useContentStore();
 const route = useRoute();
 
@@ -33,27 +31,7 @@ onMounted(async () => {
 		const resData = res.data.data;
 
 		for (const component of resData) {
-			const response = await http.get(
-				`/component/${component.id}/chart`,
-				{
-					params: {
-						city: component.city,
-						...(!["static", "current", "demo"].includes(
-							component.time_from,
-						)
-							? getComponentDataTimeframe(
-									component.time_from,
-									component.time_to,
-									true,
-								)
-							: {}),
-					},
-				},
-			);
-			component.chart_data = response.data.data;
-			if (response.data.categories) {
-				component.chart_config.categories = response.data.categories;
-			}
+			await contentStore.fetchComponentChartData(component);
 		}
 		contentStore.embedComponents = res.data.data;
 		content.value = resData.find((data) => data.city === route.params.city);
@@ -84,6 +62,11 @@ onMounted(async () => {
 				maxHeight: 'calc(100% - 36px)',
 			}"
 			@change-city="changeCity"
+			@change-selector="
+				(component, key, value) => {
+					contentStore.updateComponentSelector(component, key, value);
+				}
+			"
 		/>
 		<div v-else class="embedview-error">
 			<span>warning</span>

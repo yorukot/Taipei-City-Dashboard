@@ -45,6 +45,15 @@ function getLinkTag(link, index) {
 					)
 				"
 				mode="large"
+				@change-selector="
+					(component, key, value) => {
+						contentStore.updateComponentSelector(
+							component,
+							key,
+							value,
+						);
+					}
+				"
 			/>
 			<div class="moreinfo-info">
 				<div class="moreinfo-info-data">

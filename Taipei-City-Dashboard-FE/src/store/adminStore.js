@@ -140,30 +140,10 @@ export const useAdminStore = defineStore("admin", {
 		// 2. Get component chart / history data and append to component config
 		async getComponentData(component) {
 			this.currentComponent = JSON.parse(JSON.stringify(component));
+			const contentStore = useContentStore();
 
 			// 2.1 Get component chart data
-			const response = await http.get(
-				`/component/${component.id}/chart`,
-				{
-					params: {
-						city: component.city,
-						...(!["static", "current", "demo"].includes(
-							component.time_from,
-						)
-							? getComponentDataTimeframe(
-									component.time_from,
-									component.time_to,
-									true,
-								)
-							: {}),
-					},
-				},
-			);
-			this.currentComponent.chart_data = response.data.data;
-			if (response.data.categories) {
-				this.currentComponent.chart_config.categories =
-					response.data.categories;
-			}
+			await contentStore.fetchComponentChartData(this.currentComponent);
 
 			// 2.2 Get component history data if applicable
 			if (component.history_config && component.history_config.range) {

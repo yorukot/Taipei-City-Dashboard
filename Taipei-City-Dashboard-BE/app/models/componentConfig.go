@@ -26,6 +26,7 @@ type Component struct {
 type QueryCharts struct {
 	Index string                   `json:"index"      gorm:"column:index;type:varchar"`
 	HistoryConfig  json.RawMessage `json:"history_config" gorm:"column:history_config;type:json"`
+	SelectorConfig json.RawMessage `json:"selector_config" gorm:"column:selector_config;type:json"`
 	MapConfigIDs   pq.Int64Array   `json:"-" gorm:"column:map_config_ids;type:integer[]"`
 	MapFilter      json.RawMessage `json:"map_filter" gorm:"column:map_filter;type:json"`
 	TimeFrom       string          `json:"time_from" gorm:"column:time_from;type:varchar"`
@@ -52,6 +53,7 @@ type CityComponent struct{
 	Name           string          `json:"name"`
 	ChartConfig    json.RawMessage `json:"chart_config"`
 	HistoryConfig  json.RawMessage `json:"history_config"`
+	SelectorConfig json.RawMessage `json:"selector_config"`
 	MapConfigIDs   pq.Int64Array   `json:"-"  gorm:"type:integer[]"`
 	MapConfig      json.RawMessage `json:"map_config"`
 	MapFilter      json.RawMessage `json:"map_filter"`

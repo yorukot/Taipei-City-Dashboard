@@ -110,6 +110,16 @@ function handleMoreInfo(item) {
 					handleMoreInfo(item);
 				}
 			"
+			@change-selector="
+				(component, key, value) => {
+					contentStore.updateComponentSelector(
+						component,
+						key,
+						value,
+						true,
+					);
+				}
+			"
 			@change-city="
 				(city) => {
 					const selectedData =
@@ -201,6 +211,16 @@ function handleMoreInfo(item) {
 			@delete="
 				(id) => {
 					contentStore.deleteComponent(id);
+				}
+			"
+			@change-selector="
+				(component, key, value) => {
+					contentStore.updateComponentSelector(
+						component,
+						key,
+						value,
+						true,
+					);
 				}
 			"
 			@change-city="

@@ -121,6 +121,15 @@ onMounted(() => {
 								toggleFavorite(id, item.name, item.city);
 							}
 						"
+						@change-selector="
+							(component, key, value) => {
+								contentStore.updateComponentSelector(
+									component,
+									key,
+									value,
+								);
+							}
+						"
 					/>
 				</div>
 				<!-- 1-2. View the component's information -->

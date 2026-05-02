@@ -28,6 +28,11 @@ import BarChartWithGoal from "./components/BarChartWithGoal.vue";
 import IconPercentChart from "./components/IconPercentChart.vue";
 import IndicatorChart from "./components/IndicatorChart.vue";
 import TextUnitChart from "./components/TextUnitChart.vue";
+import SelectorSearchSelect from "./components/SelectorSearchSelect.vue";
+import {
+	getSelectorOptions,
+	initializeComponentSelectors,
+} from "../assets/utilityFunctions/componentSelectors";
 
 import MapLegendSvg from "./assets/chart/MapLegend.svg";
 import DistrictChartSvg from "./assets/chart/DistrictChart.svg";
@@ -82,6 +87,7 @@ const emits = defineEmits([
 	"add",
 	"info",
 	"toggle",
+	"changeSelector",
 	"filterByParam",
 	"filterByLayer",
 	"clearByParamFilter",
@@ -107,6 +113,14 @@ const toggleOn = computed({
 		emits("toggle", value, props.config.map_config);
 	},
 });
+const selectorControls = computed(
+	() => props.config.selector_config?.selectors || [],
+);
+const selectorValues = computed(() =>
+	selectorControls.value.length
+		? initializeComponentSelectors(props.config)
+		: {},
+);
 
 const mousePosition = ref({ x: null, y: null });
 const showTagTooltip = ref(false);
@@ -172,6 +186,12 @@ function changeActiveChart(chartName) {
 	}
 	activeChart.value = chartName;
 }
+function changeSelector(key, value) {
+	emits("changeSelector", props.config, key, value);
+}
+function getOptions(selector) {
+	return getSelectorOptions(selector, selectorValues.value);
+}
 // Updates the location for the tag tooltip
 function updateMouseLocation(e) {
 	mousePosition.value.x = e.pageX;
@@ -183,46 +203,46 @@ function changeShowTagTooltipState(state) {
 }
 function returnChartComponent(name, svg) {
 	switch (name) {
-		case "DistrictChart":
-			return svg ? DistrictChartSvg : DistrictChart;
-		case "BarChart":
-			return svg ? BarChartSvg : BarChart;
-		case "MapLegend":
-			return svg ? MapLegendSvg : MapLegend;
-		case "MetroChart":
-			return svg ? MetroChartSvg : MetroChart;
-		case "TimelineSeparateChart":
-			return svg ? TimelineSeparateChartSvg : TimelineSeparateChart;
-		case "TimelineStackedChart":
-			return svg ? TimelineStackedChartSvg : TimelineStackedChart;
-		case "PolarAreaChart":
-			return svg ? PolarAreaChartSvg : PolarAreaChart;
-		case "IconPercentChart":
-			return svg ? IconPercentChartSvg : IconPercentChart;
-		case "ColumnChart":
-			return svg ? ColumnChartSvg : ColumnChart;
-		case "DonutChart":
-			return svg ? DonutChartSvg : DonutChart;
-		case "TreemapChart":
-			return svg ? TreemapChartSvg : TreemapChart;
-		case "BarPercentChart":
-			return svg ? BarPercentChartSvg : BarPercentChart;
-		case "GuageChart":
-			return svg ? GuageChartSvg : GuageChart;
-		case "RadarChart":
-			return svg ? RadarChartSvg : RadarChart;
-		case "HeatmapChart":
-			return svg ? HeatmapChartSvg : HeatmapChart;
-		case "ColumnLineChart":
-			return svg ? ColumnLineChartSvg : ColumnLineChart;
-		case "BarChartWithGoal":
-			return svg ? BarChartWithGoalSvg : BarChartWithGoal;
-		case "IndicatorChart":
-			return svg ? IndicatorChartSvg : IndicatorChart;
-		case "TextUnitChart":
-			return svg ? TextUnitChartSvg : TextUnitChart;
-		default:
-			return svg ? MapLegendSvg : MapLegend;
+	case "DistrictChart":
+		return svg ? DistrictChartSvg : DistrictChart;
+	case "BarChart":
+		return svg ? BarChartSvg : BarChart;
+	case "MapLegend":
+		return svg ? MapLegendSvg : MapLegend;
+	case "MetroChart":
+		return svg ? MetroChartSvg : MetroChart;
+	case "TimelineSeparateChart":
+		return svg ? TimelineSeparateChartSvg : TimelineSeparateChart;
+	case "TimelineStackedChart":
+		return svg ? TimelineStackedChartSvg : TimelineStackedChart;
+	case "PolarAreaChart":
+		return svg ? PolarAreaChartSvg : PolarAreaChart;
+	case "IconPercentChart":
+		return svg ? IconPercentChartSvg : IconPercentChart;
+	case "ColumnChart":
+		return svg ? ColumnChartSvg : ColumnChart;
+	case "DonutChart":
+		return svg ? DonutChartSvg : DonutChart;
+	case "TreemapChart":
+		return svg ? TreemapChartSvg : TreemapChart;
+	case "BarPercentChart":
+		return svg ? BarPercentChartSvg : BarPercentChart;
+	case "GuageChart":
+		return svg ? GuageChartSvg : GuageChart;
+	case "RadarChart":
+		return svg ? RadarChartSvg : RadarChart;
+	case "HeatmapChart":
+		return svg ? HeatmapChartSvg : HeatmapChart;
+	case "ColumnLineChart":
+		return svg ? ColumnLineChartSvg : ColumnLineChart;
+	case "BarChartWithGoal":
+		return svg ? BarChartWithGoalSvg : BarChartWithGoal;
+	case "IndicatorChart":
+		return svg ? IndicatorChartSvg : IndicatorChart;
+	case "TextUnitChart":
+		return svg ? TextUnitChartSvg : TextUnitChart;
+	default:
+		return svg ? MapLegendSvg : MapLegend;
 	}
 }
 </script>
@@ -358,6 +378,43 @@ function returnChartComponent(name, svg) {
 					</option>
 				</template>
 			</select>
+			<div
+				v-if="selectorControls.length"
+				class="dashboardcomponent-selector-controls"
+			>
+				<label
+					v-for="selector in selectorControls"
+					:key="selector.key"
+				>
+					<span>{{ selector.label }}</span>
+					<select
+						v-if="selector.type === 'select'"
+						:value="selectorValues[selector.key]"
+						:disabled="getOptions(selector).length === 0"
+						@change="
+							changeSelector(selector.key, $event.target.value)
+						"
+					>
+						<option
+							v-for="option in getOptions(selector)"
+							:key="option.value"
+							:value="option.value"
+						>
+							{{ option.label }}
+						</option>
+					</select>
+					<SelectorSearchSelect
+						v-else
+						:model-value="selectorValues[selector.key]"
+						:options="getOptions(selector)"
+						:placeholder="`搜尋${selector.label}`"
+						:disabled="getOptions(selector).length === 0"
+						@update:model-value="
+							(value) => changeSelector(selector.key, value)
+						"
+					/>
+				</label>
+			</div>
 			<div
 				v-if="config.chart_config.types.length > 1"
 				class="dashboardcomponent-control-group"
@@ -687,18 +744,20 @@ button:hover {
 		display: flex;
 		// justify-content: center;
 		align-items: center;
+		flex-wrap: wrap;
+		gap: 6px;
 		// position: absolute;
 		top: 4.2rem;
 		left: 0;
 		z-index: 8;
 		padding: 8px 0;
+		overflow: visible;
 
 		&-group {
 			display: flex;
 			justify-content: center;
 			align-items: center;
-			margin: 0 auto;
-			transform: translateX(-15%);
+			margin-left: auto;
 
 			&-button {
 				margin: 0 2px;
@@ -732,6 +791,37 @@ button:hover {
 
 			&-disabled {
 				cursor: not-allowed;
+			}
+		}
+
+		.dashboardcomponent-selector-controls {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			margin-left: 8px;
+			overflow: visible;
+
+			label {
+				display: flex;
+				align-items: center;
+				gap: 4px;
+				overflow: visible;
+
+				> span {
+					color: var(--color-complement-text);
+					font-size: var(--font-s);
+					white-space: nowrap;
+				}
+			}
+
+			select {
+				max-width: 92px;
+				padding: 4px 6px;
+				border: 1px solid var(--color-border);
+				border-radius: 5px;
+				background-color: var(--color-component-background);
+				color: var(--color-normal-text);
+				font-size: var(--font-s);
 			}
 		}
 	}

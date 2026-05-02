@@ -569,7 +569,7 @@ function handleClose() {
 							currentSettings === 'chart'
 						"
 						:key="`${currentComponent.index}-${currentComponent.chart_config.color}-${currentComponent.chart_config.types}`"
-						:config="JSON.parse(JSON.stringify(currentComponent))"
+						:config="currentComponent"
 						:active-city="currentComponent.city"
 						:city-tag="
 							contentStore.cityManager.getTagList(
@@ -577,6 +577,15 @@ function handleClose() {
 							)
 						"
 						mode="large"
+						@change-selector="
+							(component, key, value) => {
+								contentStore.updateComponentSelector(
+									component,
+									key,
+									value,
+								);
+							}
+						"
 					/>
 					<div
 						v-else-if="currentSettings === 'history'"

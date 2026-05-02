@@ -11,6 +11,11 @@ The contentStore calls APIs to get content info and stores it.
 
 import { defineStore } from "pinia";
 import { getComponentDataTimeframe } from "../assets/utilityFunctions/dataTimeframe";
+import {
+	getComponentSelectorParams,
+	initializeComponentSelectors,
+	updateComponentSelectorValue,
+} from "../assets/utilityFunctions/componentSelectors";
 import { CityManager } from "../dashboardComponent/utilities/cityManager";
 import http from "../router/axios";
 import router from "../router/index";
@@ -91,6 +96,65 @@ export const useContentStore = defineStore("content", {
 		},
 		setMapLayerData(index, component) {
 			this.mapLayers[index] = component;
+		},
+		getComponentChartRequestParams(
+			component,
+			{ useDashboardTimeRange = false, includeTimeRange = true } = {},
+		) {
+			const params = {
+				city: component.city,
+				...getComponentSelectorParams(component),
+			};
+
+			if (
+				includeTimeRange &&
+				!["static", "current", "demo"].includes(component.time_from)
+			) {
+				Object.assign(
+					params,
+					useDashboardTimeRange
+						? this.getDashboardTimeRangeParams()
+						: getComponentDataTimeframe(
+								component.time_from,
+								component.time_to,
+								true,
+							),
+				);
+			}
+
+			return params;
+		},
+		async fetchComponentChartData(
+			component,
+			{ useDashboardTimeRange = false, includeTimeRange = true } = {},
+		) {
+			initializeComponentSelectors(component);
+
+			const response = await http.get(`/component/${component.id}/chart`, {
+				params: this.getComponentChartRequestParams(component, {
+					useDashboardTimeRange,
+					includeTimeRange,
+				}),
+			});
+
+			component.chart_data = response.data.data;
+
+			if (response.data.categories) {
+				component.chart_config.categories = response.data.categories;
+			}
+
+			return response;
+		},
+		async updateComponentSelector(
+			component,
+			key,
+			value,
+			useDashboardTimeRange = false,
+		) {
+			updateComponentSelectorValue(component, key, value);
+			await this.fetchComponentChartData(component, {
+				useDashboardTimeRange,
+			});
 		},
 		/* Steps in adding content to the application (/dashboard or /mapview) */
 		// 1. Check the current path and execute actions based on the current path
@@ -288,29 +352,9 @@ export const useContentStore = defineStore("content", {
 					const component = this.cityDashboard.components[index];
 					try {
 						// 4-2. Get chart data
-						const response = await http.get(
-							`/component/${component.id}/chart`,
-							{
-								params: {
-									city: component.city,
-									...(!["static", "current", "demo"].includes(
-										component.time_from,
-									)
-										? this.getDashboardTimeRangeParams()
-										: {}),
-								},
-							},
-						);
-
-						this.cityDashboard.components[index].chart_data =
-							response.data.data;
-
-						if (response.data.categories) {
-							this.cityDashboard.components[
-								index
-							].chart_config.categories =
-								response.data.categories;
-						}
+						await this.fetchComponentChartData(component, {
+							useDashboardTimeRange: true,
+						});
 					} catch (error) {
 						console.error(
 							`Failed to fetch chart data for component ${component.id}:`,
@@ -398,29 +442,9 @@ export const useContentStore = defineStore("content", {
 					}
 					try {
 						// 4-2. Get chart data
-						const response = await http.get(
-							`/component/${component.id}/chart`,
-							{
-								params: {
-									city: component.city,
-									...(!["static", "current", "demo"].includes(
-										component.time_from,
-									)
-										? this.getDashboardTimeRangeParams()
-										: {}),
-								},
-							},
-						);
-
-						this.cityDashboard.components[index].chart_data =
-							response.data.data;
-
-						if (response.data.categories) {
-							this.cityDashboard.components[
-								index
-							].chart_config.categories =
-								response.data.categories;
-						}
+						await this.fetchComponentChartData(component, {
+							useDashboardTimeRange: true,
+						});
 					} catch (error) {
 						console.error(
 							`Failed to fetch chart data for component ${component.id}:`,
@@ -514,29 +538,9 @@ export const useContentStore = defineStore("content", {
 					}
 					try {
 						// 4-2. Get chart data
-						const response = await http.get(
-							`/component/${component.id}/chart`,
-							{
-								params: {
-									city: component.city,
-									...(!["static", "current", "demo"].includes(
-										component.time_from,
-									)
-										? this.getDashboardTimeRangeParams()
-										: {}),
-								},
-							},
-						);
-
-						this.cityDashboard.components[index].chart_data =
-							response.data.data;
-
-						if (response.data.categories) {
-							this.cityDashboard.components[
-								index
-							].chart_config.categories =
-								response.data.categories;
-						}
+						await this.fetchComponentChartData(component, {
+							useDashboardTimeRange: true,
+						});
 					} catch (error) {
 						console.error(
 							`Failed to fetch chart data for component ${component.id}:`,
@@ -772,17 +776,9 @@ export const useContentStore = defineStore("content", {
 					const component = this.allMapLayers[index];
 
 					try {
-						const response = await http.get(
-							`/component/${component.id}/chart`,
-							{
-								params: {
-									city: component.city,
-								},
-							},
-						);
-
-						this.allMapLayers[index].chart_data =
-							response.data.data;
+						await this.fetchComponentChartData(component, {
+							includeTimeRange: false,
+						});
 					} catch (error) {
 						console.error(
 							`Failed to fetch data for component ${component.id}:`,
@@ -887,33 +883,9 @@ export const useContentStore = defineStore("content", {
 				index < dialogStore.moreInfoContent.length;
 				index++
 			) {
-				const response_2 = await http.get(
-					`/component/${dialogStore.moreInfoContent[index].id}/chart`,
-					{
-						params: {
-							city: dialogStore.moreInfoContent[index].city,
-							...(!["static", "current", "demo"].includes(
-								dialogStore.moreInfoContent[index].time_from,
-							)
-								? getComponentDataTimeframe(
-										dialogStore.moreInfoContent[index]
-											.time_from,
-										dialogStore.moreInfoContent[index]
-											.time_to,
-										true,
-									)
-								: {}),
-						},
-					},
+				await this.fetchComponentChartData(
+					dialogStore.moreInfoContent[index],
 				);
-
-				dialogStore.moreInfoContent[index].chart_data =
-					response_2.data.data;
-
-				if (response_2.data.categories) {
-					dialogStore.moreInfoContent[index].chart_config.categories =
-						response_2.data.categories;
-				}
 
 				// 2-3. Get the component history data if applicable
 				if (dialogStore.moreInfoContent[index].history_config) {

@@ -3,6 +3,8 @@ export type ComponentConfig = {
 	index: string;
 	chart_config: ChartConfig;
 	chart_data: any;
+	selector_config?: SelectorConfig | null;
+	selector_values?: Record<string, string>;
 	query_data: string;
 	map_config: MapConfig[] | null;
 	map_filter: MapFilter | null;
@@ -21,6 +23,25 @@ export type ChartConfig = {
 	types: string[];
 	unit: string | null;
 	categories: string[] | null;
+};
+
+export type SelectorConfig = {
+	selectors: SelectorControl[];
+};
+
+export type SelectorControl = {
+	key: string;
+	label: string;
+	type: string;
+	default?: string | Record<string, string>;
+	options?: SelectorOption[];
+	depends_on?: string;
+	label_key?: string;
+};
+
+export type SelectorOption = {
+	value: string;
+	label: string;
 };
 
 export type MapConfig = {

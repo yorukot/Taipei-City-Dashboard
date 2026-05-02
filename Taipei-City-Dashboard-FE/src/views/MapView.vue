@@ -211,6 +211,16 @@ function popularBasicLayerGA(map_config) {
 							mapStore.clearByLayerFilter(map_config);
 						}
 					"
+					@change-selector="
+						(component, key, value) => {
+							contentStore.updateComponentSelector(
+								component,
+								key,
+								value,
+								true,
+							);
+						}
+					"
 					@change-city="
 						(city) => {
 							const selectedData =
@@ -331,6 +341,16 @@ function popularBasicLayerGA(map_config) {
 							mapStore.flyToLocation(location);
 						}
 					"
+					@change-selector="
+						(component, key, value) => {
+							contentStore.updateComponentSelector(
+								component,
+								key,
+								value,
+								true,
+							);
+						}
+					"
 					@change-city="
 						(city) => {
 							const selectedData =
@@ -430,6 +450,16 @@ function popularBasicLayerGA(map_config) {
 							mapStore.clearByLayerFilter(map_config);
 						}
 					"
+					@change-selector="
+						(component, key, value) => {
+							contentStore.updateComponentSelector(
+								component,
+								key,
+								value,
+								true,
+							);
+						}
+					"
 					@change-city="
 						(city) => {
 							const selectedData = contentStore.allMapLayers.find(
@@ -503,6 +533,16 @@ function popularBasicLayerGA(map_config) {
 						(value, map_config) => {
 							handleToggle(value, map_config);
 							toggleSwitchBtn(value, 'noMap', arrayIdx);
+						}
+					"
+					@change-selector="
+						(component, key, value) => {
+							contentStore.updateComponentSelector(
+								component,
+								key,
+								value,
+								true,
+							);
 						}
 					"
 					@change-city="
