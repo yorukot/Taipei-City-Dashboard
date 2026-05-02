@@ -259,7 +259,6 @@ onUnmounted(() => {
 	border: solid 1px var(--color-border);
 	border-radius: 6px;
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-	min-width: 460px;
 	overflow: visible;
 }
 
@@ -286,7 +285,6 @@ onUnmounted(() => {
 }
 
 .trp-popup-input {
-	width: 100%;
 	padding: 4px 6px;
 	border-radius: 4px;
 	border: solid 1px var(--color-border);
@@ -347,7 +345,9 @@ onUnmounted(() => {
 }
 
 .trp-popup-preset {
-	display: block;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 	width: 100%;
 	text-align: left;
 	padding: 5px 8px;
