@@ -120,6 +120,8 @@ const formData = reactive({
 
 const selectedRoute = ref(null);
 const plannedRoutes = ref([]);
+const hoveredRouteIdx = ref(null);
+const ROUTE_BADGE_COLORS = ["#5a9cf8", "#3fb950", "#f8b62d"];
 const routeEndpoints = ref({ origin: null, destination: null });
 const planningLoading = ref(false);
 const planningError = ref("");
@@ -314,16 +316,35 @@ const mapGeometry = computed(() => {
 		);
 	}
 	if (phase.value === "list") {
-		// Show the endpoints + every route option lightly overlapped.
+		// Show the endpoints + every route option lightly overlapped, with
+		// a numbered badge per route at its midpoint.
 		const merged = endpointsGeometry(
 			routeEndpoints.value.origin || defaultEndpoints.ORIGIN,
 			routeEndpoints.value.destination || defaultEndpoints.DEST,
 		);
 		plannedRoutes.value.forEach((r, i) => {
 			const g = routeGeometry(r);
-			g.polylines.forEach((p) =>
-				merged.polylines.push({ ...p, id: `r${i}-${p.id}` }),
-			);
+			const routeColor =
+				ROUTE_BADGE_COLORS[i % ROUTE_BADGE_COLORS.length];
+			g.polylines.forEach((p) => {
+				merged.polylines.push({
+					...p,
+					id: `r${i}-${p.id}`,
+					color: routeColor,
+					routeIdx: i,
+				});
+			});
+			const anchor = longestSegmentMidpoint(g.polylines);
+			if (anchor) {
+				merged.markers.push({
+					id: `route-label-${i}`,
+					name: String(i + 1),
+					coord: anchor,
+					color: routeColor,
+					kind: "route-label",
+					routeIdx: i,
+				});
+			}
 		});
 		return merged;
 	}
@@ -499,6 +520,28 @@ function placeCoord(place) {
 		return null;
 	}
 	return [place.lon, place.lat];
+}
+
+// Pick the midpoint of the longest single segment across all polylines.
+// Anchors the route badge between two stations rather than on top of one.
+function longestSegmentMidpoint(polylines) {
+	let bestLen = -1;
+	let bestMid = null;
+	for (const p of polylines || []) {
+		const coords = p.coords || [];
+		for (let k = 0; k < coords.length - 1; k++) {
+			const [ax, ay] = coords[k];
+			const [bx, by] = coords[k + 1];
+			const dx = bx - ax;
+			const dy = by - ay;
+			const len = dx * dx + dy * dy;
+			if (len > bestLen) {
+				bestLen = len;
+				bestMid = [(ax + bx) / 2, (ay + by) / 2];
+			}
+		}
+	}
+	return bestMid;
 }
 
 function rentalStationCoord(station) {
@@ -1144,11 +1187,30 @@ function showStationDetail(stationId) {
 
 				<ul v-if="plannedRoutes.length" class="rp-routes">
 					<li
-						v-for="r in plannedRoutes"
+						v-for="(r, i) in plannedRoutes"
 						:key="r.id"
 						class="rp-route"
+						:class="{
+							'rp-route--hovered': hoveredRouteIdx === i,
+							'rp-route--dimmed':
+								hoveredRouteIdx !== null &&
+								hoveredRouteIdx !== i,
+						}"
 						@click="pickRoute(r)"
+						@mouseenter="hoveredRouteIdx = i"
+						@mouseleave="hoveredRouteIdx = null"
 					>
+						<span
+							class="rp-route-badge"
+							:style="{
+								backgroundColor:
+									ROUTE_BADGE_COLORS[
+										i % ROUTE_BADGE_COLORS.length
+									],
+							}"
+						>
+							{{ i + 1 }}
+						</span>
 						<div class="rp-route-top">
 							<div class="rp-route-times">
 								<span class="rp-route-board">
@@ -1584,7 +1646,10 @@ function showStationDetail(stationId) {
 
 		<!-- RIGHT MAP ─────────────────────────────────────────────── -->
 		<div class="rp-map-wrap">
-			<RoutePlannerMap :geometry="mapGeometry" />
+			<RoutePlannerMap
+				:geometry="mapGeometry"
+				:hovered-route-idx="hoveredRouteIdx"
+			/>
 		</div>
 	</div>
 </template>
@@ -1762,19 +1827,46 @@ function showStationDetail(stationId) {
 }
 
 .rp-route {
-	padding: 12px;
+	position: relative;
+	padding: 12px 12px 12px 44px;
 	border-radius: 6px;
 	border: 1px solid var(--color-border);
 	background-color: rgba(255, 255, 255, 0.02);
 	cursor: pointer;
 	transition:
 		border-color 0.15s,
-		background-color 0.15s;
+		background-color 0.15s,
+		opacity 0.15s;
 
 	&:hover {
 		border-color: var(--color-highlight);
 		background-color: rgba(90, 156, 248, 0.06);
 	}
+}
+
+.rp-route--dimmed {
+	opacity: 0.45;
+}
+
+.rp-route--hovered {
+	border-color: var(--color-highlight);
+	background-color: rgba(90, 156, 248, 0.08);
+}
+
+.rp-route-badge {
+	position: absolute;
+	top: 12px;
+	left: 12px;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #fff;
+	font-size: 13px;
+	font-weight: 700;
+	line-height: 1;
 }
 
 .rp-route-top {

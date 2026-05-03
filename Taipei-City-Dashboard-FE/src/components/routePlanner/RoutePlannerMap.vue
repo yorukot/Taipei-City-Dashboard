@@ -8,11 +8,19 @@ const props = defineProps({
 		type: Object,
 		default: () => ({ polylines: [], markers: [] }),
 	},
+	hoveredRouteIdx: {
+		type: Number,
+		default: null,
+	},
 });
 
 const containerRef = ref(null);
 let map = null;
 let markers = [];
+// Per-layer / per-marker routeIdx so hover updates can dim non-matching ones
+// without rebuilding the whole map.
+let layerRouteIdx = new Map();
+let markerRouteIdx = new Map();
 const SOURCE_PREFIX = "rp-line-";
 
 function clearLayers() {
@@ -27,6 +35,8 @@ function clearLayers() {
 		.forEach((s) => map.getSource(s) && map.removeSource(s));
 	markers.forEach((m) => m.remove());
 	markers = [];
+	layerRouteIdx.clear();
+	markerRouteIdx.clear();
 }
 
 function buildMarkerEl(marker) {
@@ -35,6 +45,14 @@ function buildMarkerEl(marker) {
 	el.style.setProperty("--mc", marker.color || "#5a9cf8");
 	if (marker.kind === "endpoint") {
 		el.classList.add("rp-map-marker--endpoint");
+	}
+	if (marker.kind === "route-label") {
+		el.classList.add("rp-map-marker--route-label");
+		const badge = document.createElement("div");
+		badge.className = "rp-map-marker-badge";
+		badge.textContent = marker.name;
+		el.appendChild(badge);
+		return el;
 	}
 	const dot = document.createElement("div");
 	dot.className = "rp-map-marker-dot";
@@ -73,6 +91,9 @@ function render() {
 				...(line.dashed ? { "line-dasharray": [1.5, 1.5] } : {}),
 			},
 		});
+		if (Number.isInteger(line.routeIdx)) {
+			layerRouteIdx.set(id, line.routeIdx);
+		}
 	});
 
 	pts.forEach((m) => {
@@ -80,7 +101,12 @@ function render() {
 			.setLngLat(m.coord)
 			.addTo(map);
 		markers.push(marker);
+		if (Number.isInteger(m.routeIdx)) {
+			markerRouteIdx.set(marker, m.routeIdx);
+		}
 	});
+
+	applyHover();
 
 	// Fit bounds to all coords.
 	const all = [];
@@ -119,7 +145,24 @@ onBeforeUnmount(() => {
 	}
 });
 
+function applyHover() {
+	if (!map) return;
+	const hovered = props.hoveredRouteIdx;
+	layerRouteIdx.forEach((routeIdx, id) => {
+		if (!map.getLayer(id)) return;
+		const dim = hovered !== null && hovered !== routeIdx;
+		map.setPaintProperty(id, "line-opacity", dim ? 0.15 : 0.85);
+	});
+	markerRouteIdx.forEach((routeIdx, marker) => {
+		const el = marker.getElement();
+		if (!el) return;
+		const dim = hovered !== null && hovered !== routeIdx;
+		el.classList.toggle("rp-map-marker--dimmed", dim);
+	});
+}
+
 watch(() => props.geometry, render, { deep: true });
+watch(() => props.hoveredRouteIdx, applyHover);
 </script>
 
 <template>
@@ -140,6 +183,30 @@ watch(() => props.geometry, render, { deep: true });
 	align-items: center;
 	transform: translateY(-6px);
 	pointer-events: none;
+	transition: opacity 0.15s;
+}
+
+.rp-map-marker--dimmed {
+	opacity: 0.2;
+}
+
+.rp-map-marker--route-label {
+	transform: translate(0, calc(-50% - 18px));
+}
+
+.rp-map-marker-badge {
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background-color: var(--mc, #5a9cf8);
+	color: #fff;
+	font-size: 14px;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 2px solid #fff;
+	box-shadow: 0 0 6px rgba(0, 0, 0, 0.7);
 }
 
 .rp-map-marker-dot {
