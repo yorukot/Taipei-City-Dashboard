@@ -22,7 +22,7 @@ func handleComponentChartDataError(c *gin.Context, err error) {
 
 func resolveChartQueryType(queryType string) (baseQueryType string, requireSelectors bool, ok bool) {
 	switch queryType {
-	case "two_d", "three_d", "percent", "time", "map_legend":
+	case "two_d", "three_d", "percent", "time", "map_legend", "five_d":
 		return queryType, false, true
 	case "two_selector", "two_selectors", "two_selector_three_d":
 		return "three_d", true, true
