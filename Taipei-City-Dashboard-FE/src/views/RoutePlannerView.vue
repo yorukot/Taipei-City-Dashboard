@@ -50,6 +50,7 @@ const MODE_ICONS = {
 	TRA: "directions_railway",
 	BICYCLE_RENTAL: "pedal_bike",
 	BIKE_RENTAL: "pedal_bike",
+	BICYCLE: "pedal_bike",
 	YOUBIKE: "pedal_bike",
 };
 
@@ -61,6 +62,7 @@ const MODE_COLORS = {
 	TRA: "#d29922",
 	BICYCLE_RENTAL: "#3fb950",
 	BIKE_RENTAL: "#3fb950",
+	BICYCLE: "#3fb950",
 	YOUBIKE: "#3fb950",
 };
 
@@ -72,7 +74,22 @@ const MODE_LABELS = {
 	TRA: "台鐵",
 	BICYCLE_RENTAL: "YouBike",
 	BIKE_RENTAL: "YouBike",
+	BICYCLE: "YouBike",
 	YOUBIKE: "YouBike",
+};
+
+const DEFAULT_ORIGIN = {
+	address: "臺北市中正區北平西路3號",
+	label: "台北車站",
+	lat: 25.04776,
+	lon: 121.51706,
+};
+
+const DEFAULT_DESTINATION = {
+	address: "臺北市信義區信義路五段7號",
+	label: "台北101",
+	lat: 25.03396,
+	lon: 121.56447,
 };
 
 // ── Phase state ─────────────────────────────────────────────────────────
@@ -84,8 +101,8 @@ const today = new Date();
 const formData = reactive({
 	date: today.toISOString().slice(0, 10),
 	time: today.toTimeString().slice(0, 5),
-	start: "臺北市中正區北平西路3號",
-	end: "臺北市信義區信義路五段7號",
+	start: DEFAULT_ORIGIN.address,
+	end: DEFAULT_DESTINATION.address,
 });
 
 const selectedRoute = ref(null);
@@ -125,14 +142,8 @@ async function submitForm() {
 
 	try {
 		const response = await axios.post(routingApiPath("/plan"), {
-			origin: {
-				address: formData.start,
-				label: formData.start,
-			},
-			destination: {
-				address: formData.end,
-				label: formData.end,
-			},
+			origin: locationPayload(formData.start, DEFAULT_ORIGIN),
+			destination: locationPayload(formData.end, DEFAULT_DESTINATION),
 			departureTime: toTaipeiIso(formData.date, formData.time),
 			first: 3,
 		});
@@ -333,6 +344,21 @@ function routingApiPath(path) {
 	return `${ROUTING_API_URL}${path}`;
 }
 
+function locationPayload(value, defaultLocation) {
+	const label = value.trim();
+	if (label === defaultLocation.address || label === defaultLocation.label) {
+		return {
+			label,
+			lat: defaultLocation.lat,
+			lon: defaultLocation.lon,
+		};
+	}
+	return {
+		address: label,
+		label,
+	};
+}
+
 function toPlannedRoutes(planPayload) {
 	const itineraries = planPayload?.itineraries || [];
 	const endpoints = routeEndpointCoords(planPayload);
@@ -508,6 +534,9 @@ function routePlanningErrorMessage(err) {
 	const body = err?.response?.data;
 	if (body?.detail) return body.detail;
 	if (body?.title) return body.title;
+	if (err?.response?.status === 500 && !body) {
+		return "路線規劃服務尚未啟動，請確認 routing-api 已在 8000 port 運行";
+	}
 	if (err?.message) return `路線規劃失敗：${err.message}`;
 	return "路線規劃暫時無法取得";
 }
@@ -627,7 +656,14 @@ function routeStepReliabilityId(routeId, idx) {
 
 function reliabilityMode(step) {
 	const mode = normalizeModeString(step.mode || step.transitMode);
-	if (mode === "BICYCLE_RENTAL" || mode === "BIKE_RENTAL") {
+	if (
+		mode === "BICYCLE_RENTAL" ||
+		mode === "BIKE_RENTAL" ||
+		mode === "YOUBIKE" ||
+		(mode === "BICYCLE" &&
+			(rentalStationForReliability(step, "pickup") ||
+				rentalStationForReliability(step, "return")))
+	) {
 		return "YOUBIKE";
 	}
 	if (mode) return mode;
@@ -758,7 +794,11 @@ function reliabilityStatusFromMetrics(mode, metrics) {
 	if (["RAIL", "TRAIN", "TRA"].includes(normalizedMode)) {
 		return railReliabilityStatus(lookup);
 	}
-	if (["YOUBIKE", "BICYCLE_RENTAL", "BIKE_RENTAL"].includes(normalizedMode)) {
+	if (
+		["YOUBIKE", "BICYCLE_RENTAL", "BIKE_RENTAL", "BICYCLE"].includes(
+			normalizedMode,
+		)
+	) {
 		return youBikeReliabilityStatus(lookup);
 	}
 	return "unknown";
@@ -882,15 +922,23 @@ function trainTypeCodeForReliability(step) {
 function rentalStationUid(step, side) {
 	const station = rentalStationForReliability(step, side);
 	if (!station) return "";
-	if (typeof station === "string") return station;
-	return firstNonEmpty(
-		station.station_id,
-		station.stationId,
-		station.station_uid,
-		station.stationUid,
-		station.uid,
-		station.id,
+	if (typeof station === "string") return normalizeRentalStationUid(station);
+	return normalizeRentalStationUid(
+		firstNonEmpty(
+			station.station_id,
+			station.stationId,
+			station.station_uid,
+			station.stationUid,
+			station.uid,
+			station.id,
+		),
 	);
+}
+
+function normalizeRentalStationUid(uid) {
+	return String(uid || "")
+		.trim()
+		.replace(/^youbike:/i, "");
 }
 
 function rentalStationName(step, side) {

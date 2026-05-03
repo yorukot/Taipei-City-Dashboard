@@ -1,58 +1,68 @@
 /* global process */
 import vue from "@vitejs/plugin-vue";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import viteCompression from "vite-plugin-compression";
 
-// 嘗試讀取環境變數，若不存在則回傳 false
-let isDockerCompose = process?.env.DOCKER_COMPOSE === "true";
-const routingProxyTarget =
-	process?.env.ROUTING_API_PROXY_TARGET ||
-	(isDockerCompose
-		? "http://host.docker.internal:8000"
-		: "http://localhost:8000");
+function createServerConfig(mode) {
+	const env = {
+		...loadEnv(mode, process.cwd(), ""),
+		...process.env,
+	};
+	const isDockerCompose = env.DOCKER_COMPOSE === "true";
+	const routingProxyTarget =
+		env.ROUTING_API_PROXY_TARGET ||
+		env.VITE_ROUTING_API_PROXY_TARGET ||
+		(isDockerCompose
+			? "http://host.docker.internal:8000"
+			: "http://localhost:8000");
+	const routingProxyConfig = {
+		target: routingProxyTarget,
+		changeOrigin: true,
+		headers: routingProxyTarget.includes("ngrok")
+			? {
+					"ngrok-skip-browser-warning": "true",
+				}
+			: {},
+		rewrite: (path) => path.replace(/^\/routing/, ""),
+	};
 
-const routingProxyConfig = {
-	target: routingProxyTarget,
-	changeOrigin: true,
-	rewrite: (path) => path.replace(/^\/routing/, ""),
-};
+	if (isDockerCompose) {
+		return {
+			host: "0.0.0.0",
+			port: 80,
+			proxy: {
+				"/api/dev": {
+					target: "http://dashboard-be:8080",
+					changeOrigin: true,
+					rewrite: (path) => path.replace("/dev", "/v1"),
+				},
+				"/routing": routingProxyConfig,
+			},
+		};
+	}
 
-let serverConfig = {
-	host: "0.0.0.0",
-	port: 80,
-	proxy: {
-		"/api": {
-			target: "http://192.168.8.142:8080/api/dev",
-			changeOrigin: true,
-			secure: false,
-			rewrite: (path) => path.replace(/^\/api/, ""),
-		},
-		"/geo_server": {
-			target: "http://192.168.8.142:8080/geo_server/",
-			changeOrigin: true,
-			secure: false,
-			rewrite: (path) => path.replace(/^\/geo_server/, ""),
-		},
-		"/routing": routingProxyConfig,
-	},
-};
-
-if (isDockerCompose) {
-	serverConfig = {
+	return {
 		host: "0.0.0.0",
-		port: 80, // 如有需要可變更 port
+		port: 80,
 		proxy: {
-			"/api/dev": {
-				target: "http://dashboard-be:8080",
+			"/api": {
+				target: "http://192.168.8.142:8080/api/dev",
 				changeOrigin: true,
-				rewrite: (path) => path.replace("/dev", "/v1"),
+				secure: false,
+				rewrite: (path) => path.replace(/^\/api/, ""),
+			},
+			"/geo_server": {
+				target: "http://192.168.8.142:8080/geo_server/",
+				changeOrigin: true,
+				secure: false,
+				rewrite: (path) => path.replace(/^\/geo_server/, ""),
 			},
 			"/routing": routingProxyConfig,
 		},
 	};
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
 	plugins: [vue(), viteCompression()],
 	build: {
 		rollupOptions: {
@@ -78,5 +88,5 @@ export default defineConfig({
 		},
 	},
 	base: "/",
-	server: serverConfig,
-});
+	server: createServerConfig(mode),
+}));

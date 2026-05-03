@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+import os
 from dataclasses import dataclass
 
 import requests
@@ -26,8 +27,8 @@ log = logging.getLogger("taipei-routing.geocode")
 
 # --- Configuration ----------------------------------------------------------
 
-OTP_GRAPHQL = "http://localhost:8080/otp/gtfs/v1"
-NOMINATIM_BASE = "http://localhost:8081"  # swap for self-hosted
+OTP_GRAPHQL = os.getenv("OTP_GRAPHQL", "http://localhost:8080/otp/gtfs/v1")
+NOMINATIM_BASE = os.getenv("NOMINATIM_BASE", "http://localhost:8081")
 USER_AGENT = "taipei-transit-demo/0.1"
 
 ORIGIN_ADDR = "世界大樓"

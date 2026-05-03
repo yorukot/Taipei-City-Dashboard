@@ -28,12 +28,20 @@ services:
       VITE_TAIPEIPASS_URL: ${TAIPEIPASS_URL}
       VITE_TAIPEIPASS_CLIENT_ID: ${ISSO_CLIENT_ID}
       VITE_TAIPEIPASS_SCOPE: ${ISSO_CLIENT_SCOPE}
+      VITE_ROUTING_API_URL: ${VITE_ROUTING_API_URL:-/routing}
+      ROUTING_API_PROXY_TARGET: ${ROUTING_API_PROXY_TARGET:-http://host.docker.internal:8000}
     volumes:
       - ../Taipei-City-Dashboard-FE:/opt/Taipei-City-Dashboard-FE
+      - dashboard-fe-node-modules:/opt/Taipei-City-Dashboard-FE/node_modules
     ports:
       - "8080:80"
     working_dir: /opt/Taipei-City-Dashboard-FE
-    command: ["npm", "run", "dev"]
+    command:
+      [
+        "sh",
+        "-lc",
+        "corepack enable && pnpm install --frozen-lockfile && pnpm dev --host 0.0.0.0 --port 80",
+      ]
 
   dashboard-be:
     # image: golang:${GOLANG_IMAGE_TAG:-latest} #Go Lang Image Without Model and onnxruntime
@@ -103,6 +111,9 @@ networks:
   default:
     name: br_dashboard
     external: true
+
+volumes:
+  dashboard-fe-node-modules:
 ###########################################
 ## Create docker network command sample: ##
 ## ------------------------------------- ##################################################################
