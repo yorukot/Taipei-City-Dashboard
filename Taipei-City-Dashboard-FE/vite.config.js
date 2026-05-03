@@ -57,7 +57,12 @@ function createServerConfig(mode) {
 				secure: false,
 				rewrite: (path) => path.replace(/^\/geo_server/, ""),
 			},
-			"/routing": routingProxyConfig,
+			"/routing": {
+				target: "http://192.168.8.142:8080/routing/",
+				changeOrigin: true,
+				secure: false,
+				rewrite: (path) => path.replace(/^\/routing/, ""),
+			},
 		},
 	};
 }

@@ -8,7 +8,6 @@ import {
 	endpointsGeometry,
 	getStation,
 	routeGeometry,
-	stations,
 } from "../components/routePlanner/mockData.js";
 import {
 	customRouteGeometry,
@@ -23,6 +22,7 @@ import {
 	getBusStopIndexSync,
 	pickClosest,
 } from "../components/routePlanner/busStopIndex.js";
+import { metroStationByName } from "../components/routePlanner/metroStationIndex.js";
 import http from "../router/axios";
 
 const RELIABILITY_META = {
@@ -449,7 +449,7 @@ function routeLegPoint(leg, side, legIdx, legCount, endpoints) {
 	const name = side === "from" ? leg.from_name : leg.to_name;
 	const rentalStation =
 		side === "from" ? leg.pickup_station : leg.return_station;
-	const knownStation = stationByName(name);
+	const metroStation = metroStationByName(name);
 	const endpointCoord =
 		side === "from" && legIdx === 0
 			? endpoints.origin
@@ -467,7 +467,7 @@ function routeLegPoint(leg, side, legIdx, legCount, endpoints) {
 		name: name || (side === "from" ? "起點" : "終點"),
 		coord:
 			rentalStationCoord(rentalStation) ||
-			knownStation?.coord ||
+			metroStation?.coord ||
 			busStopCoord ||
 			endpointCoord ||
 			interpHint,
@@ -502,16 +502,6 @@ function rentalStationCoord(station) {
 		return null;
 	}
 	return [station.lon, station.lat];
-}
-
-function stationByName(name) {
-	if (!name) return null;
-	return Object.values(stations).find(
-		(station) =>
-			name === station.name ||
-			name.includes(station.name) ||
-			station.name.includes(name),
-	);
 }
 
 function interpolateCoord(origin, destination, ratio) {
