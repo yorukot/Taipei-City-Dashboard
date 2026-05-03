@@ -3,12 +3,12 @@ Visualize a random station's mock availability across the day.
 
 Reads the per-tick snapshots in data/youbike/mock/ and the station metadata
 from data/youbike/{taipei,newtaipei}-stations.json, picks a station, and
-renders AvailableRentBikes (with GeneralBikes / ElectricBikes split) over
-the full day. Saves a PNG to data/youbike/mock/viz/{StationUID}.png.
+renders available_rent_bikes over the full day. Saves a PNG to
+data/youbike/mock/viz/{sno}.png.
 
 Usage:
     python visualize_mock.py                # random station
-    python visualize_mock.py --uid TPE500101001
+    python visualize_mock.py --sno 500101001
     python visualize_mock.py --seed 7       # reproducible random pick
     python visualize_mock.py --type business # constrain to a type
 """
@@ -44,33 +44,33 @@ from generate_mock import DATA_DIR, OUT_DIR, STATIONS_FILES, classify_all, load_
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--uid", help="StationUID to plot; default = random")
+    parser.add_argument("--sno", help="Station sno (StationID) to plot; default = random")
     parser.add_argument("--type", choices=("business", "residential", "mixed", "tourist"),
                         help="Restrict random pick to this type")
     parser.add_argument("--seed", type=int, default=None)
     args = parser.parse_args()
 
     stations = [s for s in load_stations() if (s.get("BikesCapacity") or 0) > 0]
-    by_uid = {s["StationUID"]: s for s in stations}
-    districts, types = classify_all(stations)
-    meta_by_uid = {s["StationUID"]: (d, t) for s, d, t in zip(stations, districts, types)}
+    by_sno = {s["StationID"]: s for s in stations}
+    districts_zh, _districts_en, types = classify_all(stations)
+    meta_by_sno = {s["StationID"]: (d, t) for s, d, t in zip(stations, districts_zh, types)}
 
-    if args.uid:
-        if args.uid not in by_uid:
-            raise SystemExit(f"StationUID {args.uid} not found")
-        uid = args.uid
+    if args.sno:
+        if args.sno not in by_sno:
+            raise SystemExit(f"sno {args.sno} not found")
+        sno = args.sno
     else:
         rng = random.Random(args.seed)
-        candidates = [s["StationUID"] for s, t in zip(stations, types)
+        candidates = [s["StationID"] for s, t in zip(stations, types)
                       if args.type is None or t == args.type]
         if not candidates:
             raise SystemExit(f"no stations matched --type={args.type}")
-        uid = rng.choice(candidates)
+        sno = rng.choice(candidates)
 
-    station = by_uid[uid]
-    district, kind = meta_by_uid[uid]
+    station = by_sno[sno]
+    district, kind = meta_by_sno[sno]
     capacity = station["BikesCapacity"]
-    name = (station.get("StationName") or {}).get("Zh_tw") or uid
+    name = (station.get("StationName") or {}).get("Zh_tw") or sno
 
     files = sorted(OUT_DIR.glob("*.json"))
     if not files:
@@ -78,26 +78,16 @@ def main() -> None:
 
     times: list[dt.datetime] = []
     rent: list[int] = []
-    general: list[int] = []
-    electric: list[int] = []
     for f in files:
         for r in json.load(f.open()):
-            if r["StationUID"] == uid:
-                # Strip tzinfo so matplotlib displays the wall-clock time
-                # (Taipei) rather than auto-converting to UTC.
-                times.append(dt.datetime.fromisoformat(r["UpdateTime"]).replace(tzinfo=None))
-                rent.append(r["AvailableRentBikes"])
-                detail = r.get("AvailableRentBikesDetail") or {}
-                general.append(detail.get("GeneralBikes", 0))
-                electric.append(detail.get("ElectricBikes", 0))
+            if r["sno"] == sno:
+                times.append(dt.datetime.strptime(r["updateTime"], "%Y-%m-%d %H:%M:%S"))
+                rent.append(r["available_rent_bikes"])
                 break
 
     fig, ax = plt.subplots(figsize=(12, 5))
-    ax.fill_between(times, 0, general, label="General bikes",
-                    color="#3b82f6", alpha=0.7, step="post")
-    ax.fill_between(times, general, [g + e for g, e in zip(general, electric)],
-                    label="Electric bikes", color="#10b981", alpha=0.7, step="post")
-    ax.plot(times, rent, color="#1e3a8a", linewidth=1.2, label="Available rent bikes")
+    ax.plot(times, rent, color="#1e3a8a", linewidth=1.4, label="Available rent bikes")
+    ax.fill_between(times, 0, rent, color="#3b82f6", alpha=0.3, step="post")
     ax.axhline(capacity, color="red", linestyle="--", linewidth=0.8,
                label=f"Capacity ({capacity})")
 
@@ -109,12 +99,12 @@ def main() -> None:
     ax.grid(alpha=0.3)
     ax.legend(loc="upper right", framealpha=0.9)
 
-    title = f"{name}\n{uid}  •  {district}  •  type={kind}  •  capacity={capacity}  •  {times[0].date()}"
+    title = f"{name}\n{sno}  •  {district}  •  type={kind}  •  capacity={capacity}  •  {times[0].date()}"
     ax.set_title(title, fontsize=11)
 
     viz_dir = OUT_DIR / "viz"
     viz_dir.mkdir(parents=True, exist_ok=True)
-    out_path = viz_dir / f"{uid}.png"
+    out_path = viz_dir / f"{sno}.png"
     fig.tight_layout()
     fig.savefig(out_path, dpi=120)
     print(f"  ✓ wrote {out_path}")
