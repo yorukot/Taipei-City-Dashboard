@@ -700,7 +700,7 @@ function localReliabilityForStep(step) {
 		return {
 			status: "green",
 			label: statusMeta("green").label,
-			reason: "捷運路段暫以可靠處理",
+			reason: "捷運原則上不誤點",
 			metrics: [],
 			ignored: false,
 		};
