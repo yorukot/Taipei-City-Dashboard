@@ -1,5 +1,7 @@
-// Mock data used by the route planner. Coordinates are approximate Taipei MRT
-// station locations — close enough to draw believable polylines on the map.
+// Shared helpers for the route planner. The `stations` registry is a small
+// hardcoded set of Taipei MRT coordinates used to backfill leg coordinates by
+// name when the routing API doesn't return them. `defaultEndpoints` is the
+// placeholder origin/destination shown before the user submits the form.
 
 export const PUNCTUALITY = {
 	on_time: { label: "常準時", color: "#3fb950", icon: "check_circle" },
@@ -7,14 +9,6 @@ export const PUNCTUALITY = {
 	often_late: { label: "常遲到", color: "#f85149", icon: "error" },
 };
 
-// Taipei MRT line colours
-const RED = "#E3002C";
-const BLUE = "#0070BD";
-const BROWN = "#B57A2C";
-const GREEN = "#008659";
-const ORANGE = "#F8B62D";
-
-// A handful of stations with coordinates and a fake punctuality verdict.
 export const stations = {
 	taipei_main: {
 		name: "台北車站",
@@ -113,255 +107,14 @@ export const stations = {
 	},
 };
 
-// Transit lines used for both backend & custom planning. Each line lists the
-// station ids it serves in order so a custom plan can pick a board+alight pair.
-export const transitLines = [
-	{
-		id: "mrt_red",
-		type: "mrt",
-		name: "淡水信義線",
-		color: RED,
-		stationIds: [
-			"minquan_w",
-			"shuanglian",
-			"zhongshan",
-			"taipei_main",
-			"cks_hall",
-			"dongmen",
-			"daan_park",
-			"daan",
-			"xinyi_anhe",
-			"taipei_101",
-		],
-	},
-	{
-		id: "mrt_blue",
-		type: "mrt",
-		name: "板南線",
-		color: BLUE,
-		stationIds: [
-			"bannan_fuzhong",
-			"jiangzicui",
-			"taipei_main",
-			"zhongxiao_fuxing",
-			"zhongxiao_dunhua",
-		],
-	},
-	{
-		id: "mrt_brown",
-		type: "mrt",
-		name: "文湖線",
-		color: BROWN,
-		stationIds: ["daan", "zhongxiao_fuxing", "nanjing_fuxing", "songshan"],
-	},
-	{
-		id: "mrt_green",
-		type: "mrt",
-		name: "松山新店線",
-		color: GREEN,
-		stationIds: [
-			"songshan",
-			"nanjing_sanmin",
-			"zhongshan",
-			"guting",
-			"gongguan",
-		],
-	},
-	{
-		id: "bus_295",
-		type: "bus",
-		name: "295 公車",
-		color: ORANGE,
-		stationIds: [
-			"taipei_main",
-			"zhongshan",
-			"nanjing_fuxing",
-			"nanjing_sanmin",
-			"songshan",
-		],
-	},
-	{
-		id: "bus_5",
-		type: "bus",
-		name: "5 公車",
-		color: ORANGE,
-		stationIds: ["taipei_main", "cks_hall", "guting", "gongguan"],
-	},
-];
-
-export function getLine(id) {
-	return transitLines.find((l) => l.id === id);
-}
-
 export function getStation(id) {
 	return stations[id];
 }
 
-// Helper: build the polyline coords for a transit segment (board → alight).
-export function lineCoords(lineId, fromStationId, toStationId) {
-	const line = getLine(lineId);
-	if (!line) return [];
-	const i = line.stationIds.indexOf(fromStationId);
-	const j = line.stationIds.indexOf(toStationId);
-	if (i < 0 || j < 0) return [];
-	const slice =
-		i <= j
-			? line.stationIds.slice(i, j + 1)
-			: line.stationIds.slice(j, i + 1).reverse();
-	return slice.map((id) => stations[id].coord);
-}
-
-// Mock origin / destination markers (used when the user types free-text).
 const ORIGIN = [121.5235, 25.056];
 const DEST = [121.563, 25.0335];
 
-// Three pre-computed "backend" routes from 中山 area → 台北101 area.
-export const mockRoutes = [
-	{
-		id: "route_1",
-		summary: "推薦路線",
-		boardTime: "08:30",
-		alightTime: "08:55",
-		durationMin: 25,
-		transferCount: 0,
-		steps: [
-			{
-				kind: "walk",
-				durationMin: 4,
-				from: { name: "起點", coord: ORIGIN },
-				to: { name: "中山", coord: stations.zhongshan.coord },
-			},
-			{
-				kind: "transit",
-				lineId: "mrt_red",
-				lineName: "淡水信義線",
-				color: RED,
-				modeIcon: "subway",
-				boardTime: "08:34",
-				alightTime: "08:51",
-				durationMin: 17,
-				from: "zhongshan",
-				to: "taipei_101",
-			},
-			{
-				kind: "walk",
-				durationMin: 4,
-				from: {
-					name: "台北101/世貿",
-					coord: stations.taipei_101.coord,
-				},
-				to: { name: "終點", coord: DEST },
-			},
-		],
-	},
-	{
-		id: "route_2",
-		summary: "捷運+捷運",
-		boardTime: "08:30",
-		alightTime: "09:02",
-		durationMin: 32,
-		transferCount: 1,
-		steps: [
-			{
-				kind: "walk",
-				durationMin: 5,
-				from: { name: "起點", coord: ORIGIN },
-				to: { name: "中山", coord: stations.zhongshan.coord },
-			},
-			{
-				kind: "transit",
-				lineId: "mrt_red",
-				lineName: "淡水信義線",
-				color: RED,
-				modeIcon: "subway",
-				boardTime: "08:36",
-				alightTime: "08:42",
-				durationMin: 6,
-				from: "zhongshan",
-				to: "taipei_main",
-			},
-			{
-				kind: "walk",
-				durationMin: 3,
-				from: {
-					name: "台北車站轉乘",
-					coord: stations.taipei_main.coord,
-				},
-				to: {
-					name: "台北車站 (板南線)",
-					coord: stations.taipei_main.coord,
-				},
-			},
-			{
-				kind: "transit",
-				lineId: "mrt_blue",
-				lineName: "板南線",
-				color: BLUE,
-				modeIcon: "subway",
-				boardTime: "08:46",
-				alightTime: "08:54",
-				durationMin: 8,
-				from: "taipei_main",
-				to: "zhongxiao_dunhua",
-			},
-			{
-				kind: "walk",
-				durationMin: 8,
-				from: {
-					name: "忠孝敦化",
-					coord: stations.zhongxiao_dunhua.coord,
-				},
-				to: { name: "終點", coord: DEST },
-			},
-		],
-	},
-	{
-		id: "route_3",
-		summary: "公車路線",
-		boardTime: "08:30",
-		alightTime: "09:10",
-		durationMin: 40,
-		transferCount: 1,
-		steps: [
-			{
-				kind: "walk",
-				durationMin: 3,
-				from: { name: "起點", coord: ORIGIN },
-				to: { name: "中山", coord: stations.zhongshan.coord },
-			},
-			{
-				kind: "transit",
-				lineId: "bus_295",
-				lineName: "295 公車",
-				color: ORANGE,
-				modeIcon: "directions_bus",
-				boardTime: "08:34",
-				alightTime: "08:55",
-				durationMin: 21,
-				from: "zhongshan",
-				to: "nanjing_sanmin",
-			},
-			{
-				kind: "transit",
-				lineId: "mrt_green",
-				lineName: "松山新店線",
-				color: GREEN,
-				modeIcon: "subway",
-				boardTime: "09:00",
-				alightTime: "09:06",
-				durationMin: 6,
-				from: "nanjing_sanmin",
-				to: "songshan",
-			},
-			{
-				kind: "walk",
-				durationMin: 4,
-				from: { name: "松山", coord: stations.songshan.coord },
-				to: { name: "終點", coord: DEST },
-			},
-		],
-	},
-];
+export const defaultEndpoints = { ORIGIN, DEST };
 
 // Build map geometry (polylines + station markers) for a route object.
 export function routeGeometry(route) {
@@ -406,12 +159,7 @@ export function routeGeometry(route) {
 				);
 			}
 		} else {
-			const coords =
-				step.lineId &&
-				typeof step.from === "string" &&
-				typeof step.to === "string"
-					? lineCoords(step.lineId, step.from, step.to)
-					: [fromPoint?.coord, toPoint?.coord].filter(Boolean);
+			const coords = [fromPoint?.coord, toPoint?.coord].filter(Boolean);
 			if (coords.length >= 2) {
 				polylines.push({
 					id: `transit-${idx}`,
@@ -481,5 +229,3 @@ export function endpointsGeometry(startCoord, endCoord) {
 	}
 	return { polylines, markers };
 }
-
-export const defaultEndpoints = { ORIGIN, DEST };

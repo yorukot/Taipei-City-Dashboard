@@ -7,10 +7,8 @@ import {
 	defaultEndpoints,
 	endpointsGeometry,
 	getStation,
-	mockRoutes,
 	routeGeometry,
 	stations,
-	transitLines,
 } from "../components/routePlanner/mockData.js";
 import {
 	customRouteGeometry,
@@ -113,7 +111,7 @@ const formData = reactive({
 });
 
 const selectedRoute = ref(null);
-const plannedRoutes = ref(cloneRoutes(mockRoutes));
+const plannedRoutes = ref([]);
 const routeEndpoints = ref({ origin: null, destination: null });
 const planningLoading = ref(false);
 const planningError = ref("");
@@ -348,18 +346,6 @@ function transitIcons(route) {
 		}
 	});
 	return icons;
-}
-
-function cloneRoutes(routes) {
-	return routes.map((route) => ({
-		...route,
-		reliability: unknownReliability(),
-		steps: route.steps.map((step, idx) => ({
-			...step,
-			reliabilityId: routeStepReliabilityId(route.id, idx),
-			reliability: unknownReliability(),
-		})),
-	}));
 }
 
 function routingApiPath(path) {

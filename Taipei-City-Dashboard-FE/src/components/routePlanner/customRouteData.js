@@ -61,7 +61,7 @@ function initMetroData() {
 				stationRegistry[id] = {
 					name: s.name,
 					coord: [s.lon, s.lat],
-					punctuality: randomPunctuality(),
+					punctuality: "on_time",
 				};
 			}
 			stationIds.push(id);
