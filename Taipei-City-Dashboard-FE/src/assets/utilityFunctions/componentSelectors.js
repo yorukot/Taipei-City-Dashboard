@@ -1,12 +1,10 @@
 import { reactive } from "vue";
 
 import http from "../../router/axios";
-import busRouteStopDirectionLabels from "../configs/selectors/busRouteStopDirectionLabels.json";
 import newTaipeiStations from "../configs/selectors/newtaipei-stations.json";
 import taipeiStations from "../configs/selectors/taipei-stations.json";
 
 const selectorLabelRegistry = {
-	bus_route_stop_direction_labels: busRouteStopDirectionLabels,
 	youbike_station_labels: {
 		taipei: toYoubikeStationOptions(taipeiStations, "TPE"),
 		new_tpe: toYoubikeStationOptions(newTaipeiStations, "NWT"),
@@ -50,9 +48,24 @@ export const selectorConfigFallbacks = {
 		selectors: [
 			{
 				key: "selector_1",
+				label: "公車路線",
+				type: "search-select",
+				api_source: {
+					url: "/route/",
+					value_field: "route_uid",
+					label_field: "route_name",
+				},
+			},
+			{
+				key: "selector_2",
 				label: "站點",
 				type: "search-select",
-				label_key: "bus_route_stop_direction_labels",
+				depends_on: "selector_1",
+				api_source: {
+					url: "/route/{selector_1.id}/stops",
+					value_field: "stop_uid",
+					label_field: "stop_name",
+				},
 			},
 		],
 	},

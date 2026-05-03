@@ -1015,7 +1015,10 @@ function reliabilityMetricText(reliability) {
 function stationOf(id) {
 	if (!id) return { name: "", coord: null, punctuality: "" };
 	if (typeof id === "object") return id;
-	return getStation(id) || { name: id, coord: null, punctuality: "" };
+	return (
+		getCustomStation(id) ||
+		getStation(id) || { name: id, coord: null, punctuality: "" }
+	);
 }
 
 function punctualityOf(id) {

@@ -81,7 +81,7 @@ export async function loadBusRoutes() {
 	if (busRoutesLoaded.value) return;
 	busRoutesLoaded.value = true;
 	try {
-		const { data } = await http.get("/route");
+		const { data } = await http.get("/route/");
 		const items = data?.data || [];
 		items.forEach((r) => {
 			const id = `bus_${r.id}`;
