@@ -18,6 +18,11 @@ import {
 	loadBusRouteStops,
 	loadBusRoutes,
 } from "../components/routePlanner/customRouteData.js";
+import {
+	getBusStopIndex,
+	getBusStopIndexSync,
+	pickClosest,
+} from "../components/routePlanner/busStopIndex.js";
 import http from "../router/axios";
 
 const RELIABILITY_META = {
@@ -154,6 +159,7 @@ async function submitForm() {
 		});
 
 		routeEndpoints.value = routeEndpointCoords(response.data);
+		await getBusStopIndex().catch(() => null);
 		plannedRoutes.value = toPlannedRoutes(response.data);
 		if (plannedRoutes.value.length === 0) {
 			planningError.value = "查無可用路線";
@@ -450,20 +456,31 @@ function routeLegPoint(leg, side, legIdx, legCount, endpoints) {
 			: side === "to" && legIdx === legCount - 1
 				? endpoints.destination
 				: null;
-	const fallbackCoord = interpolateCoord(
+	const interpHint = interpolateCoord(
 		endpoints.origin,
 		endpoints.destination,
 		side === "from" ? legIdx / legCount : (legIdx + 1) / legCount,
 	);
+	const busStopCoord = busStopCoordByName(name, interpHint);
 
 	return {
 		name: name || (side === "from" ? "起點" : "終點"),
 		coord:
 			rentalStationCoord(rentalStation) ||
 			knownStation?.coord ||
+			busStopCoord ||
 			endpointCoord ||
-			fallbackCoord,
+			interpHint,
 	};
+}
+
+function busStopCoordByName(name, hintCoord) {
+	if (!name) return null;
+	const index = getBusStopIndexSync();
+	if (!index) return null;
+	const entries = index.byName.get(name);
+	if (!entries) return null;
+	return pickClosest(entries, hintCoord)?.coord || null;
 }
 
 function routeEndpointCoords(planPayload) {

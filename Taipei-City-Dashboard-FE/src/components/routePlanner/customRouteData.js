@@ -1,12 +1,13 @@
 // Reactive data for the route planner's "custom route" (自訂路線) phase.
 // Metro lines/stations are loaded from the bundled JSON. Bus routes are
 // fetched from /route, and bus stops for a route are fetched from
-// /route/<id>/stops on demand. Bus stop coordinates are not provided by
-// the API, so we generate plausible Taipei-area positions and cache them.
+// /route/<id>/stops on demand. Bus stop coordinates come from the bundled
+// /mapData/bus_stop_tpe.geojson, joined by StopUID.
 
 import { reactive, ref } from "vue";
 import metroStationsRaw from "../../assets/configs/selectors/metro-stations.json";
 import http from "../../router/axios";
+import { getBusStopIndex } from "./busStopIndex.js";
 
 const LINE_COLORS = {
 	板南線: "#0070BD",
@@ -20,22 +21,7 @@ const LINE_COLORS = {
 const BUS_COLOR = "#F8B62D";
 const FALLBACK_COLOR = "#5a9cf8";
 
-// A few Taipei boxes (lon/lat) used to scatter bus stops on the map.
-const TAIPEI_BOXES = [
-	{ latMin: 25.02, latMax: 25.06, lonMin: 121.5, lonMax: 121.55 },
-	{ latMin: 25.03, latMax: 25.07, lonMin: 121.54, lonMax: 121.58 },
-	{ latMin: 25.04, latMax: 25.08, lonMin: 121.52, lonMax: 121.57 },
-	{ latMin: 25.0, latMax: 25.04, lonMin: 121.49, lonMax: 121.54 },
-];
-
 const PUNCTUALITY_KEYS = ["on_time", "sometimes_late", "often_late"];
-
-function randomTaipeiCoord() {
-	const box = TAIPEI_BOXES[Math.floor(Math.random() * TAIPEI_BOXES.length)];
-	const lat = box.latMin + Math.random() * (box.latMax - box.latMin);
-	const lon = box.lonMin + Math.random() * (box.lonMax - box.lonMin);
-	return [lon, lat];
-}
 
 function randomPunctuality() {
 	return PUNCTUALITY_KEYS[
@@ -107,15 +93,20 @@ export async function loadBusRouteStops(lineId) {
 	if (!line || line.type !== "bus") return;
 	busStopsLoaded[lineId] = true;
 	try {
-		const { data } = await http.get(`/route/${line.backendId}/stops`);
+		const [{ data }, index] = await Promise.all([
+			http.get(`/route/${line.backendId}/stops`),
+			getBusStopIndex(),
+		]);
 		const stops = data?.data || [];
 		const ids = [];
 		stops.forEach((s) => {
 			const id = `bus_stop_${s.stop_uid}`;
 			if (!stationRegistry[id]) {
+				const hit = index.byUid.get(s.stop_uid);
+				if (!hit) return;
 				stationRegistry[id] = {
 					name: s.stop_name,
-					coord: randomTaipeiCoord(),
+					coord: hit.coord,
 					punctuality: randomPunctuality(),
 				};
 			}
