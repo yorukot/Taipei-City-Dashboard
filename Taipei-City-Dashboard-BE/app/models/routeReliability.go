@@ -17,8 +17,11 @@ type RouteReliabilityLegRequest struct {
 	ID                string  `json:"id"`
 	Mode              string  `json:"mode"`
 	RouteName         string  `json:"route_name"`
+	SelectorKey       string  `json:"selector_key"`
 	FromName          string  `json:"from_name"`
 	ToName            string  `json:"to_name"`
+	StopName          string  `json:"stop_name"`
+	Direction         *int    `json:"direction"`
 	StartTime         string  `json:"start_time"`
 	EndTime           string  `json:"end_time"`
 	DurationSeconds   float64 `json:"duration_seconds"`
@@ -65,6 +68,16 @@ type availabilityAggregate struct {
 	Count int64   `gorm:"column:count"`
 }
 
+type busArrivalReliabilityAggregate struct {
+	AvgAbsArrivalErrorMinutes float64 `gorm:"column:avg_abs_arrival_error_minutes"`
+	OnTimeCount               int64   `gorm:"column:on_time_count"`
+	LateCount                 int64   `gorm:"column:late_count"`
+	EarlyOver5Count           int64   `gorm:"column:early_over_5_count"`
+	Late5To10Count            int64   `gorm:"column:late_5_to_10_count"`
+	LateOver10Count           int64   `gorm:"column:late_over_10_count"`
+	SampleCount               int64   `gorm:"column:sample_count"`
+}
+
 func GetRouteReliability(req RouteReliabilityRequest) (RouteReliabilityOutput, error) {
 	departureTime, err := parseReliabilityTime(req.DepartureTime)
 	if err != nil {
@@ -90,12 +103,35 @@ func GetRouteReliability(req RouteReliabilityRequest) (RouteReliabilityOutput, e
 func analyzeRouteLegReliability(leg RouteReliabilityLegRequest, legTime time.Time) RouteLegReliability {
 	mode := normalizeRouteMode(leg.Mode)
 	switch mode {
+	case "BUS":
+		return analyzeBusReliability(leg, mode)
 	case "RAIL", "TRAIN", "TRA":
 		return analyzeRailReliability(leg, legTime, mode)
 	case "BICYCLE_RENTAL", "BIKE_RENTAL", "YOUBIKE":
 		return analyzeYouBikeReliability(leg, legTime, mode)
 	default:
 		return unavailableLegReliability(leg.ID, mode, "此交通模式暫無本次可靠度指標", "")
+	}
+}
+
+func analyzeBusReliability(leg RouteReliabilityLegRequest, mode string) RouteLegReliability {
+	if DBDashboard == nil {
+		return unavailableLegReliability(leg.ID, mode, "資料庫尚未連線，無法計算公車到站誤差指標", "mv_bus_arrival_error_detail")
+	}
+
+	result, matchQuality, ok := queryBusArrivalReliability(leg)
+	if !ok {
+		return unavailableLegReliability(leg.ID, mode, "查無近 24 小時公車到站誤差資料", "mv_bus_arrival_error_detail")
+	}
+
+	return RouteLegReliability{
+		ID:           leg.ID,
+		Mode:         mode,
+		Available:    true,
+		Reason:       fmt.Sprintf("近 24 小時公車到站誤差資料共 %d 筆", result.SampleCount),
+		Source:       "mv_bus_arrival_error_detail",
+		MatchQuality: matchQuality,
+		Metrics:      buildBusArrivalReliabilityMetrics(result),
 	}
 }
 
@@ -195,6 +231,18 @@ func analyzeYouBikeReliability(leg RouteReliabilityLegRequest, legTime time.Time
 	}
 }
 
+func buildBusArrivalReliabilityMetrics(result busArrivalReliabilityAggregate) []RouteReliabilityMetric {
+	return []RouteReliabilityMetric{
+		{Key: "avg_abs_arrival_error_minutes", Label: "平均到站誤差", Value: roundReliabilityValue(result.AvgAbsArrivalErrorMinutes), Unit: "分鐘"},
+		{Key: "on_time_count", Label: "準時班次", Value: float64(result.OnTimeCount), Unit: "筆"},
+		{Key: "late_count", Label: "未準時班次", Value: float64(result.LateCount), Unit: "筆"},
+		{Key: "early_over_5_count", Label: "提前 5 分以上", Value: float64(result.EarlyOver5Count), Unit: "筆"},
+		{Key: "late_5_to_10_count", Label: "誤點 5-10 分", Value: float64(result.Late5To10Count), Unit: "筆"},
+		{Key: "late_over_10_count", Label: "誤點 10 分以上", Value: float64(result.LateOver10Count), Unit: "筆"},
+		{Key: "sample_count", Label: "樣本數", Value: float64(result.SampleCount), Unit: "筆"},
+	}
+}
+
 func buildTrainStationReliabilityMetrics(result trainStationReliabilityAggregate) []RouteReliabilityMetric {
 	return []RouteReliabilityMetric{
 		{Key: "on_time_rate", Label: "準點率", Value: roundReliabilityValue(result.OnTimeRate), Unit: "%"},
@@ -215,6 +263,110 @@ func buildYouBikeAvailabilityMetrics(side string, value float64, count int64) []
 		{Key: "avg_available_rent_bikes", Label: "平均可借車輛", Value: roundReliabilityValue(value), Unit: "輛"},
 		{Key: "rent_sample_count", Label: "可借樣本數", Value: float64(count), Unit: "筆"},
 	}
+}
+
+func queryBusArrivalReliability(leg RouteReliabilityLegRequest) (busArrivalReliabilityAggregate, string, bool) {
+	selectorKey := strings.TrimSpace(leg.SelectorKey)
+	if selectorKey != "" {
+		if result, ok := queryBusArrivalReliabilityByFilter(selectorKey, "", "", nil); ok {
+			return result, "selector", true
+		}
+	}
+
+	routeCandidates := busRouteNameCandidates(leg.RouteName)
+	stopCandidates := stationNameCandidates(firstNonEmpty(leg.StopName, leg.FromName))
+	if len(routeCandidates) == 0 {
+		return busArrivalReliabilityAggregate{}, "unavailable", false
+	}
+
+	for _, routeName := range routeCandidates {
+		for _, stopName := range stopCandidates {
+			if leg.Direction != nil {
+				if result, ok := queryBusArrivalReliabilityByFilter("", routeName, stopName, leg.Direction); ok {
+					return result, "exact", true
+				}
+			}
+			if result, ok := queryBusArrivalReliabilityByFilter("", routeName, stopName, nil); ok {
+				return result, "exact", true
+			}
+		}
+	}
+
+	for _, routeName := range routeCandidates {
+		if leg.Direction != nil {
+			if result, ok := queryBusArrivalReliabilityByFilter("", routeName, "", leg.Direction); ok {
+				return result, "fallback", true
+			}
+		}
+		if result, ok := queryBusArrivalReliabilityByFilter("", routeName, "", nil); ok {
+			return result, "fallback", true
+		}
+	}
+
+	return busArrivalReliabilityAggregate{}, "unavailable", false
+}
+
+func queryBusArrivalReliabilityByFilter(selectorKey string, routeName string, stopName string, direction *int) (busArrivalReliabilityAggregate, bool) {
+	var result busArrivalReliabilityAggregate
+
+	whereClauses := []string{}
+	args := []interface{}{}
+	if selectorKey != "" {
+		whereClauses = append(whereClauses, "selector_key = ?")
+		args = append(args, selectorKey)
+	}
+	if routeName != "" {
+		whereClauses = append(whereClauses, "(route_name = ? OR route_name ILIKE ? OR ? ILIKE '%' || route_name || '%')")
+		args = append(args, routeName, "%"+routeName+"%", routeName)
+	}
+	if stopName != "" {
+		whereClauses = append(whereClauses, "(stop_name = ? OR stop_name ILIKE ? OR ? ILIKE '%' || stop_name || '%')")
+		args = append(args, stopName, "%"+stopName+"%", stopName)
+	}
+	if direction != nil {
+		whereClauses = append(whereClauses, "direction = ?")
+		args = append(args, *direction)
+	}
+	if len(whereClauses) == 0 {
+		return result, false
+	}
+
+	err := DBDashboard.Raw(
+		fmt.Sprintf(
+			`WITH matched AS (
+			SELECT
+				actual_time,
+				EXTRACT(epoch FROM (actual_time - predicted_time)) / 60.0 AS signed_error_minutes
+			FROM public.mv_bus_arrival_error_detail
+			WHERE %s
+		),
+		window AS (
+			SELECT max(actual_time) AS max_actual_time FROM matched
+		),
+		base AS (
+			SELECT matched.signed_error_minutes
+			FROM matched, window
+			WHERE window.max_actual_time IS NOT NULL
+				AND matched.actual_time >= window.max_actual_time - INTERVAL '24 hours'
+		)
+		SELECT
+			COALESCE(round(avg(abs(signed_error_minutes))::numeric, 1), 0)::float AS avg_abs_arrival_error_minutes,
+			count(*) FILTER (WHERE abs(signed_error_minutes) <= 5) AS on_time_count,
+			count(*) FILTER (WHERE abs(signed_error_minutes) > 5) AS late_count,
+			count(*) FILTER (WHERE signed_error_minutes < -5) AS early_over_5_count,
+			count(*) FILTER (WHERE signed_error_minutes > 5 AND signed_error_minutes <= 10) AS late_5_to_10_count,
+			count(*) FILTER (WHERE signed_error_minutes > 10) AS late_over_10_count,
+			count(*) AS sample_count
+		FROM base`,
+			strings.Join(whereClauses, " AND "),
+		),
+		args...,
+	).Scan(&result).Error
+	if err != nil {
+		return result, false
+	}
+
+	return result, result.SampleCount > 0
 }
 
 func queryYouBikeAverageAvailability(stationUID string, side string, hour string) (float64, int64, bool) {
@@ -373,6 +525,16 @@ func unavailableLegReliability(id string, mode string, reason string, source str
 
 func normalizeRouteMode(mode string) string {
 	return strings.ToUpper(strings.TrimSpace(mode))
+}
+
+func busRouteNameCandidates(routeName string) []string {
+	candidates := stationNameCandidates(routeName)
+	more := []string{}
+	for _, candidate := range candidates {
+		more = append(more, strings.ReplaceAll(candidate, "公車", ""))
+		more = append(more, strings.ReplaceAll(candidate, "路線", ""))
+	}
+	return uniqueNonEmptyStrings(append(candidates, more...))
 }
 
 func roundReliabilityValue(value float64) float64 {

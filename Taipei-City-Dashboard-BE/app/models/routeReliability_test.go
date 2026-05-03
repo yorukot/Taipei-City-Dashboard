@@ -31,6 +31,26 @@ func TestBuildYouBikeAvailabilityMetrics(t *testing.T) {
 	assertMetric(t, returnMetrics, "return_sample_count", "可還樣本數", 23, "筆")
 }
 
+func TestBuildBusArrivalReliabilityMetrics(t *testing.T) {
+	metrics := buildBusArrivalReliabilityMetrics(busArrivalReliabilityAggregate{
+		AvgAbsArrivalErrorMinutes: 6.26,
+		OnTimeCount:               15,
+		LateCount:                 8,
+		EarlyOver5Count:           2,
+		Late5To10Count:            3,
+		LateOver10Count:           5,
+		SampleCount:               23,
+	})
+
+	assertMetric(t, metrics, "avg_abs_arrival_error_minutes", "平均到站誤差", 6.3, "分鐘")
+	assertMetric(t, metrics, "on_time_count", "準時班次", 15, "筆")
+	assertMetric(t, metrics, "late_count", "未準時班次", 8, "筆")
+	assertMetric(t, metrics, "early_over_5_count", "提前 5 分以上", 2, "筆")
+	assertMetric(t, metrics, "late_5_to_10_count", "誤點 5-10 分", 3, "筆")
+	assertMetric(t, metrics, "late_over_10_count", "誤點 10 分以上", 5, "筆")
+	assertMetric(t, metrics, "sample_count", "樣本數", 23, "筆")
+}
+
 func TestAnalyzeRouteLegReliabilityUnsupportedMode(t *testing.T) {
 	got := analyzeRouteLegReliability(
 		RouteReliabilityLegRequest{ID: "mrt-1", Mode: "SUBWAY"},

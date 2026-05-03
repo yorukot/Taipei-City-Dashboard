@@ -5,8 +5,8 @@ import taipeiStations from "../configs/selectors/taipei-stations.json";
 const selectorLabelRegistry = {
 	bus_route_stop_direction_labels: busRouteStopDirectionLabels,
 	youbike_station_labels: {
-		taipei: toYoubikeStationOptions(taipeiStations),
-		new_tpe: toYoubikeStationOptions(newTaipeiStations),
+		taipei: toYoubikeStationOptions(taipeiStations, "TPE"),
+		new_tpe: toYoubikeStationOptions(newTaipeiStations, "NWT"),
 	},
 };
 
@@ -221,12 +221,14 @@ function normalizeSelectorConfig(selectorConfig) {
 	}
 }
 
-function toYoubikeStationOptions(stations) {
+function toYoubikeStationOptions(stations, uidPrefix) {
 	return stations.map((station) => ({
 		label:
 			station.StationName?.Zh_tw ||
 			station.StationName?.En ||
 			station.StationID,
-		value: station.StationUID,
+		value:
+			station.StationUID ||
+			(station.StationID ? `${uidPrefix}${station.StationID}` : ""),
 	}));
 }
