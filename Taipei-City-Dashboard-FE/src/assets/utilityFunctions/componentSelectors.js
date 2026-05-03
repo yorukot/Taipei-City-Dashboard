@@ -90,7 +90,8 @@ export function getComponentSelectorConfig(component) {
 		return selectorConfig;
 	}
 
-	return selectorConfigFallbacks[component?.index] || null;
+	// return selectorConfigFallbacks[component?.index] || null;
+	return null;
 }
 
 export function getSelectorOptions(selector, selectorValues = {}) {
