@@ -1,4 +1,5 @@
 <script setup>
+import axios from "axios";
 import { computed, reactive, ref } from "vue";
 import RoutePlannerMap from "../components/routePlanner/RoutePlannerMap.vue";
 import {
@@ -9,6 +10,7 @@ import {
 	getStation,
 	mockRoutes,
 	routeGeometry,
+	stations,
 	transitLines,
 } from "../components/routePlanner/mockData.js";
 import http from "../router/axios";
@@ -20,6 +22,59 @@ const RELIABILITY_META = {
 	unknown: { label: "資料不足" },
 };
 
+const BACKEND_RELIABILITY_MODES = [
+	"BUS",
+	"RAIL",
+	"TRAIN",
+	"TRA",
+	"YOUBIKE",
+	"BICYCLE_RENTAL",
+	"BIKE_RENTAL",
+];
+
+const ROUTING_API_URL = (
+	import.meta.env.VITE_ROUTING_API_URL || "/routing"
+).replace(/\/$/, "");
+
+const DEFAULT_STATION_META = {
+	label: "站點",
+	color: "#8b949e",
+	icon: "radio_button_unchecked",
+};
+
+const MODE_ICONS = {
+	BUS: "directions_bus",
+	SUBWAY: "subway",
+	RAIL: "directions_railway",
+	TRAIN: "directions_railway",
+	TRA: "directions_railway",
+	BICYCLE_RENTAL: "pedal_bike",
+	BIKE_RENTAL: "pedal_bike",
+	YOUBIKE: "pedal_bike",
+};
+
+const MODE_COLORS = {
+	BUS: "#f8b62d",
+	SUBWAY: "#5a9cf8",
+	RAIL: "#d29922",
+	TRAIN: "#d29922",
+	TRA: "#d29922",
+	BICYCLE_RENTAL: "#3fb950",
+	BIKE_RENTAL: "#3fb950",
+	YOUBIKE: "#3fb950",
+};
+
+const MODE_LABELS = {
+	BUS: "公車",
+	SUBWAY: "捷運",
+	RAIL: "台鐵",
+	TRAIN: "台鐵",
+	TRA: "台鐵",
+	BICYCLE_RENTAL: "YouBike",
+	BIKE_RENTAL: "YouBike",
+	YOUBIKE: "YouBike",
+};
+
 // ── Phase state ─────────────────────────────────────────────────────────
 // "form" → "list" → "detail"   (when backend planning)
 // "form" → "custom"            (when self planning)
@@ -29,12 +84,15 @@ const today = new Date();
 const formData = reactive({
 	date: today.toISOString().slice(0, 10),
 	time: today.toTimeString().slice(0, 5),
-	start: "中山站",
-	end: "台北101",
+	start: "臺北市中正區北平西路3號",
+	end: "臺北市信義區信義路五段7號",
 });
 
 const selectedRoute = ref(null);
 const plannedRoutes = ref(cloneRoutes(mockRoutes));
+const routeEndpoints = ref({ origin: null, destination: null });
+const planningLoading = ref(false);
+const planningError = ref("");
 const reliabilityLoading = ref(false);
 const reliabilityError = ref(false);
 
@@ -56,11 +114,42 @@ const PER_STOP_MIN = { mrt: 2, bus: 3 };
 const TRANSFER_BUFFER_MIN = 2;
 
 // ── Form actions ────────────────────────────────────────────────────────
-function submitForm() {
+async function submitForm() {
 	phase.value = "list";
 	selectedRoute.value = null;
-	plannedRoutes.value = cloneRoutes(mockRoutes);
-	analyzeRouteReliability();
+	plannedRoutes.value = [];
+	planningLoading.value = true;
+	planningError.value = "";
+	reliabilityError.value = false;
+	routeEndpoints.value = { origin: null, destination: null };
+
+	try {
+		const response = await axios.post(routingApiPath("/plan"), {
+			origin: {
+				address: formData.start,
+				label: formData.start,
+			},
+			destination: {
+				address: formData.end,
+				label: formData.end,
+			},
+			departureTime: toTaipeiIso(formData.date, formData.time),
+			first: 3,
+		});
+
+		routeEndpoints.value = routeEndpointCoords(response.data);
+		plannedRoutes.value = toPlannedRoutes(response.data);
+		if (plannedRoutes.value.length === 0) {
+			planningError.value = "查無可用路線";
+			return;
+		}
+		analyzeRouteReliability();
+	} catch (err) {
+		planningError.value = routePlanningErrorMessage(err);
+		plannedRoutes.value = [];
+	} finally {
+		planningLoading.value = false;
+	}
 }
 
 function submitCustom() {
@@ -71,7 +160,9 @@ function submitCustom() {
 function backToForm() {
 	phase.value = "form";
 	selectedRoute.value = null;
+	planningError.value = "";
 	reliabilityError.value = false;
+	routeEndpoints.value = { origin: null, destination: null };
 }
 
 function pickRoute(r) {
@@ -185,8 +276,8 @@ const mapGeometry = computed(() => {
 	if (phase.value === "list") {
 		// Show the endpoints + every route option lightly overlapped.
 		const merged = endpointsGeometry(
-			defaultEndpoints.ORIGIN,
-			defaultEndpoints.DEST,
+			routeEndpoints.value.origin || defaultEndpoints.ORIGIN,
+			routeEndpoints.value.destination || defaultEndpoints.DEST,
 		);
 		plannedRoutes.value.forEach((r, i) => {
 			const g = routeGeometry(r);
@@ -238,17 +329,205 @@ function cloneRoutes(routes) {
 	}));
 }
 
+function routingApiPath(path) {
+	return `${ROUTING_API_URL}${path}`;
+}
+
+function toPlannedRoutes(planPayload) {
+	const itineraries = planPayload?.itineraries || [];
+	const endpoints = routeEndpointCoords(planPayload);
+	return itineraries.map((itinerary, routeIdx) => {
+		const steps = (itinerary.legs || []).map((leg, legIdx) =>
+			toPlannedRouteStep(leg, legIdx, itinerary.legs || [], endpoints),
+		);
+		const firstStep = steps[0] || {};
+		const lastStep = steps[steps.length - 1] || {};
+
+		return {
+			id: `planned_${routeIdx + 1}`,
+			summary: routeSummary(steps, routeIdx),
+			boardTime: firstStep.boardTime || formData.time,
+			alightTime: lastStep.alightTime || formData.time,
+			durationMin: Math.max(
+				1,
+				Math.round((itinerary.duration_seconds || 0) / 60),
+			),
+			transferCount: itinerary.transfers || 0,
+			steps: steps.map((step, stepIdx) => ({
+				...step,
+				reliabilityId: routeStepReliabilityId(
+					`planned_${routeIdx + 1}`,
+					stepIdx,
+				),
+				reliability: unknownReliability(),
+			})),
+			reliability: unknownReliability(),
+		};
+	});
+}
+
+function toPlannedRouteStep(leg, legIdx, legs, endpoints) {
+	const mode = normalizeModeString(leg.mode);
+	const from = routeLegPoint(leg, "from", legIdx, legs.length, endpoints);
+	const to = routeLegPoint(leg, "to", legIdx, legs.length, endpoints);
+	const durationMin = Math.max(
+		1,
+		Math.round((leg.duration_seconds || 0) / 60),
+	);
+
+	if (mode === "WALK") {
+		return {
+			kind: "walk",
+			mode,
+			durationMin,
+			from,
+			to,
+			boardTime: timeText(leg.start_time),
+			alightTime: timeText(leg.end_time),
+		};
+	}
+
+	return {
+		kind: "transit",
+		mode,
+		route: leg.route,
+		headsign: leg.headsign,
+		lineName: leg.route || modeLabel(mode),
+		color: modeColor(mode),
+		modeIcon: modeIcon(mode),
+		boardTime: timeText(leg.start_time),
+		alightTime: timeText(leg.end_time),
+		durationMin,
+		from,
+		to,
+		pickup_station: leg.pickup_station,
+		return_station: leg.return_station,
+	};
+}
+
+function routeLegPoint(leg, side, legIdx, legCount, endpoints) {
+	const name = side === "from" ? leg.from_name : leg.to_name;
+	const rentalStation =
+		side === "from" ? leg.pickup_station : leg.return_station;
+	const knownStation = stationByName(name);
+	const endpointCoord =
+		side === "from" && legIdx === 0
+			? endpoints.origin
+			: side === "to" && legIdx === legCount - 1
+				? endpoints.destination
+				: null;
+	const fallbackCoord = interpolateCoord(
+		endpoints.origin,
+		endpoints.destination,
+		side === "from" ? legIdx / legCount : (legIdx + 1) / legCount,
+	);
+
+	return {
+		name: name || (side === "from" ? "起點" : "終點"),
+		coord:
+			rentalStationCoord(rentalStation) ||
+			knownStation?.coord ||
+			endpointCoord ||
+			fallbackCoord,
+	};
+}
+
+function routeEndpointCoords(planPayload) {
+	return {
+		origin: placeCoord(planPayload?.origin),
+		destination: placeCoord(planPayload?.destination),
+	};
+}
+
+function placeCoord(place) {
+	if (!Number.isFinite(place?.lon) || !Number.isFinite(place?.lat)) {
+		return null;
+	}
+	return [place.lon, place.lat];
+}
+
+function rentalStationCoord(station) {
+	if (!Number.isFinite(station?.lon) || !Number.isFinite(station?.lat)) {
+		return null;
+	}
+	return [station.lon, station.lat];
+}
+
+function stationByName(name) {
+	if (!name) return null;
+	return Object.values(stations).find(
+		(station) =>
+			name === station.name ||
+			name.includes(station.name) ||
+			station.name.includes(name),
+	);
+}
+
+function interpolateCoord(origin, destination, ratio) {
+	if (!origin || !destination) return null;
+	return [
+		origin[0] + (destination[0] - origin[0]) * ratio,
+		origin[1] + (destination[1] - origin[1]) * ratio,
+	];
+}
+
+function routeSummary(steps, routeIdx) {
+	const transitNames = steps
+		.filter((step) => step.kind === "transit")
+		.map((step) => step.lineName)
+		.filter(Boolean);
+	if (transitNames.length) return transitNames.join(" + ");
+	return routeIdx === 0 ? "推薦路線" : `建議路線 ${routeIdx + 1}`;
+}
+
+function timeText(value) {
+	if (!value) return "";
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return "";
+	return date.toLocaleTimeString("zh-TW", {
+		hour: "2-digit",
+		minute: "2-digit",
+		hour12: false,
+		timeZone: "Asia/Taipei",
+	});
+}
+
+function modeIcon(mode) {
+	return MODE_ICONS[mode] || "directions_transit";
+}
+
+function modeColor(mode) {
+	return MODE_COLORS[mode] || "#8b949e";
+}
+
+function modeLabel(mode) {
+	return MODE_LABELS[mode] || "大眾運輸";
+}
+
+function routePlanningErrorMessage(err) {
+	const body = err?.response?.data;
+	if (body?.detail) return body.detail;
+	if (body?.title) return body.title;
+	if (err?.message) return `路線規劃失敗：${err.message}`;
+	return "路線規劃暫時無法取得";
+}
+
 async function analyzeRouteReliability() {
 	reliabilityLoading.value = true;
 	reliabilityError.value = false;
+	const legs = plannedRoutes.value.flatMap((route) =>
+		route.steps
+			.map((step, idx) => toReliabilityLegRequest(route, step, idx))
+			.filter((leg) => shouldFetchReliability(leg.mode)),
+	);
 	try {
+		if (legs.length === 0) {
+			mergeRouteReliability([]);
+			return;
+		}
 		const response = await http.post("/route/reliability", {
 			departure_time: toTaipeiIso(formData.date, formData.time),
-			legs: plannedRoutes.value.flatMap((route) =>
-				route.steps.map((step, idx) =>
-					toReliabilityLegRequest(route, step, idx),
-				),
-			),
+			legs,
 		});
 		const { data: responseBody } = response;
 		const { data: reliabilityPayload = {} } = responseBody || {};
@@ -256,14 +535,19 @@ async function analyzeRouteReliability() {
 		mergeRouteReliability(legReliabilities);
 	} catch {
 		reliabilityError.value = true;
-		plannedRoutes.value = plannedRoutes.value.map((route) => ({
-			...route,
-			reliability: unknownReliability("可靠度分析暫時無法取得"),
-			steps: route.steps.map((step) => ({
+		plannedRoutes.value = plannedRoutes.value.map((route) => {
+			const steps = route.steps.map((step) => ({
 				...step,
-				reliability: unknownReliability("可靠度分析暫時無法取得"),
-			})),
-		}));
+				reliability:
+					localReliabilityForStep(step) ||
+					unknownReliability("可靠度分析暫時無法取得"),
+			}));
+			return {
+				...route,
+				reliability: aggregateRouteReliability(steps),
+				steps,
+			};
+		});
 	} finally {
 		reliabilityLoading.value = false;
 	}
@@ -273,9 +557,14 @@ function toReliabilityLegRequest(route, step, idx) {
 	const {
 		alightTime: stepAlightTime,
 		boardTime: stepBoardTime,
+		direction,
 		durationMin,
 		from,
 		lineName,
+		selectorKey,
+		selector_key: selectorKeySnake,
+		stopName,
+		stop_name: stopNameSnake,
 		to,
 	} = step;
 	const {
@@ -291,15 +580,22 @@ function toReliabilityLegRequest(route, step, idx) {
 	return {
 		id: routeStepReliabilityId(id, idx),
 		mode: reliabilityMode(step),
-		route_name: lineName || "",
+		route_name: routeNameForReliability(step) || lineName || "",
+		selector_key: firstNonEmpty(selectorKey, selectorKeySnake),
 		from_name: fromName,
 		to_name: toName,
+		stop_name: firstNonEmpty(stopName, stopNameSnake, fromName),
+		direction: normalizeDirection(direction),
 		start_time: toTaipeiIso(formData.date, startTime),
 		end_time: toTaipeiIso(formData.date, endTime),
 		duration_seconds: (durationMin || 0) * 60,
-		station_uid: "",
-		pickup_station_uid: "",
-		return_station_uid: "",
+		station_id: trainStationIdForReliability(step),
+		station_uid: stationUidForReliability(step),
+		train_type_code: trainTypeCodeForReliability(step),
+		pickup_station_uid: rentalStationUid(step, "pickup"),
+		return_station_uid: rentalStationUid(step, "return"),
+		pickup_station_name: rentalStationName(step, "pickup"),
+		return_station_name: rentalStationName(step, "return"),
 	};
 }
 
@@ -313,19 +609,14 @@ function mergeRouteReliability(legReliabilities) {
 		const steps = route.steps.map((step) => ({
 			...step,
 			reliability:
+				localReliabilityForStep(step) ||
 				reliabilityById[step.reliabilityId] ||
 				unknownReliability("查無此路段可靠度資料"),
 		}));
-		const routeStatus = aggregateRouteStatus(steps);
 		return {
 			...route,
 			steps,
-			reliability: {
-				...unknownReliability(),
-				status: routeStatus,
-				label: statusMeta(routeStatus).label,
-				reason: routeReliabilityReason(steps),
-			},
+			reliability: aggregateRouteReliability(steps),
 		};
 	});
 }
@@ -335,10 +626,42 @@ function routeStepReliabilityId(routeId, idx) {
 }
 
 function reliabilityMode(step) {
+	const mode = normalizeModeString(step.mode || step.transitMode);
+	if (mode === "BICYCLE_RENTAL" || mode === "BIKE_RENTAL") {
+		return "YOUBIKE";
+	}
+	if (mode) return mode;
 	if (step.kind === "walk") return "WALK";
 	if (step.modeIcon === "directions_bus") return "BUS";
 	if (step.modeIcon === "subway") return "SUBWAY";
 	return "RAIL";
+}
+
+function shouldFetchReliability(mode) {
+	return BACKEND_RELIABILITY_MODES.includes(mode);
+}
+
+function localReliabilityForStep(step) {
+	const mode = reliabilityMode(step);
+	if (mode === "WALK") {
+		return {
+			status: "unknown",
+			label: "不納入",
+			reason: "步行路段不納入可靠度分析",
+			metrics: [],
+			ignored: true,
+		};
+	}
+	if (mode === "SUBWAY") {
+		return {
+			status: "green",
+			label: statusMeta("green").label,
+			reason: "捷運路段暫以可靠處理",
+			metrics: [],
+			ignored: false,
+		};
+	}
+	return null;
 }
 
 function stepPointName(point) {
@@ -353,13 +676,30 @@ function toTaipeiIso(date, hhmm) {
 }
 
 function normalizeReliability(item) {
-	const { label, metrics = [], reason, status = "unknown" } = item || {};
-	const meta = statusMeta(status);
-	return {
+	const {
+		available,
+		match_quality: matchQuality,
+		metrics = [],
+		mode = "",
+		reason,
+		source,
 		status,
-		label: label || meta.label,
+	} = item || {};
+	if (!available) {
+		return unknownReliability(reason || "查無可靠度資料");
+	}
+	const derivedStatus = RELIABILITY_META[status]
+		? status
+		: reliabilityStatusFromMetrics(mode, metrics);
+	const meta = statusMeta(derivedStatus);
+	return {
+		status: derivedStatus,
+		label: meta.label,
 		reason: reason || "查無可靠度資料",
 		metrics,
+		source,
+		matchQuality,
+		ignored: false,
 	};
 }
 
@@ -377,24 +717,231 @@ function statusMeta(status) {
 	return RELIABILITY_META[status] || RELIABILITY_META.unknown;
 }
 
-function aggregateRouteStatus(steps) {
-	const statuses = steps.map((step) => step.reliability?.status || "unknown");
-	if (statuses.includes("red")) return "red";
-	if (statuses.includes("yellow")) return "yellow";
-	if (statuses.includes("green")) return "green";
+function aggregateRouteReliability(steps) {
+	const analyzed = steps.filter((step) => !step.reliability?.ignored);
+	if (analyzed.length === 0) {
+		return unknownReliability("此路線沒有可分析路段");
+	}
+
+	const red = analyzed.find((step) => step.reliability?.status === "red");
+	if (red) return routeStatusReliability("red", red.reliability.reason);
+
+	const yellow = analyzed.find(
+		(step) => step.reliability?.status === "yellow",
+	);
+	if (yellow) {
+		return routeStatusReliability("yellow", yellow.reliability.reason);
+	}
+
+	const missing = analyzed.find(
+		(step) => step.reliability?.status === "unknown",
+	);
+	if (missing) return unknownReliability("部分路段可靠度資料不足");
+
+	return routeStatusReliability("green", "可分析路段皆為低風險");
+}
+
+function routeStatusReliability(status, reason) {
+	const { label } = statusMeta(status);
+	return {
+		status,
+		label,
+		reason,
+		metrics: [],
+	};
+}
+
+function reliabilityStatusFromMetrics(mode, metrics) {
+	const normalizedMode = normalizeModeString(mode);
+	const lookup = metricLookup(metrics);
+	if (normalizedMode === "BUS") return busReliabilityStatus(lookup);
+	if (["RAIL", "TRAIN", "TRA"].includes(normalizedMode)) {
+		return railReliabilityStatus(lookup);
+	}
+	if (["YOUBIKE", "BICYCLE_RENTAL", "BIKE_RENTAL"].includes(normalizedMode)) {
+		return youBikeReliabilityStatus(lookup);
+	}
 	return "unknown";
 }
 
-function routeReliabilityReason(steps) {
-	const analyzed = steps.filter(
-		(step) => step.reliability?.status !== "unknown",
+function busReliabilityStatus(metrics) {
+	const sampleCount = metricNumber(metrics, "sample_count");
+	if (sampleCount !== null && sampleCount < 3) return "unknown";
+
+	const avgError = metricNumber(metrics, "avg_abs_arrival_error_minutes");
+	if (avgError !== null) {
+		return statusFromLowerIsBetter(avgError, 5, 10);
+	}
+
+	const onTimeCount = metricNumber(metrics, "on_time_count");
+	if (onTimeCount !== null && sampleCount) {
+		return statusFromHigherIsBetter(
+			(onTimeCount / sampleCount) * 100,
+			80,
+			60,
+		);
+	}
+	return "unknown";
+}
+
+function railReliabilityStatus(metrics) {
+	const sampleCount = metricNumber(metrics, "sample_count");
+	if (sampleCount !== null && sampleCount < 3) return "unknown";
+
+	const onTimeRate = metricNumber(metrics, "on_time_rate");
+	if (onTimeRate !== null) {
+		return statusFromHigherIsBetter(onTimeRate, 80, 60);
+	}
+	return "unknown";
+}
+
+function youBikeReliabilityStatus(metrics) {
+	const values = [
+		metricNumber(metrics, "avg_available_rent_bikes"),
+		metricNumber(metrics, "avg_available_return_bikes"),
+	].filter((value) => value !== null);
+	if (values.length === 0) return "unknown";
+	return statusFromHigherIsBetter(Math.min(...values), 5, 2);
+}
+
+function statusFromLowerIsBetter(value, greenMax, yellowMax) {
+	if (value <= greenMax) return "green";
+	if (value <= yellowMax) return "yellow";
+	return "red";
+}
+
+function statusFromHigherIsBetter(value, greenMin, yellowMin) {
+	if (value >= greenMin) return "green";
+	if (value >= yellowMin) return "yellow";
+	return "red";
+}
+
+function metricLookup(metrics) {
+	return metrics.reduce((lookup, metric) => {
+		lookup[metric.key] = metric;
+		return lookup;
+	}, {});
+}
+
+function metricNumber(metrics, key) {
+	const metric = metrics[key];
+	if (!metric) return null;
+	const value = Number(metric.value);
+	return Number.isFinite(value) ? value : null;
+}
+
+function routeNameForReliability(step) {
+	const { route } = step;
+	if (typeof route === "string") return route;
+	if (route) {
+		return firstNonEmpty(
+			route.shortName,
+			route.short_name,
+			route.longName,
+			route.long_name,
+			route.name,
+		);
+	}
+	return firstNonEmpty(
+		step.routeName,
+		step.route_name,
+		step.lineName,
+		step.line_name,
 	);
-	if (analyzed.length === 0) return "全路線暫無可靠度資料";
-	const risky = analyzed.find((step) =>
-		["red", "yellow"].includes(step.reliability.status),
+}
+
+function trainStationIdForReliability(step) {
+	return firstNonEmpty(
+		step.stationId,
+		step.station_id,
+		step.fromStationId,
+		step.from_station_id,
 	);
-	if (risky) return risky.reliability.reason;
-	return "可分析路段皆為低風險";
+}
+
+function stationUidForReliability(step) {
+	return firstNonEmpty(
+		step.stationUid,
+		step.station_uid,
+		step.fromStationUid,
+		step.from_station_uid,
+	);
+}
+
+function trainTypeCodeForReliability(step) {
+	const trainTypeCode = firstNonEmpty(
+		step.trainTypeCode,
+		step.train_type_code,
+	);
+	if (["RAIL", "TRAIN", "TRA"].includes(reliabilityMode(step))) {
+		return trainTypeCode || "all";
+	}
+	return trainTypeCode;
+}
+
+function rentalStationUid(step, side) {
+	const station = rentalStationForReliability(step, side);
+	if (!station) return "";
+	if (typeof station === "string") return station;
+	return firstNonEmpty(
+		station.station_id,
+		station.stationId,
+		station.station_uid,
+		station.stationUid,
+		station.uid,
+		station.id,
+	);
+}
+
+function rentalStationName(step, side) {
+	const station = rentalStationForReliability(step, side);
+	if (!station || typeof station === "string") return "";
+	return firstNonEmpty(
+		station.name,
+		station.station_name,
+		station.stationName,
+	);
+}
+
+function rentalStationForReliability(step, side) {
+	if (side === "pickup") {
+		return (
+			step.pickup_station ||
+			step.pickupStation ||
+			step.pickupRentalStation ||
+			step.fromRentalStation
+		);
+	}
+	return (
+		step.return_station ||
+		step.returnStation ||
+		step.returnRentalStation ||
+		step.toRentalStation
+	);
+}
+
+function normalizeDirection(direction) {
+	if (direction === undefined || direction === null || direction === "") {
+		return undefined;
+	}
+	const value = Number(direction);
+	return Number.isInteger(value) ? value : undefined;
+}
+
+function normalizeModeString(mode) {
+	return String(mode || "")
+		.trim()
+		.toUpperCase()
+		.replaceAll("-", "_");
+}
+
+function firstNonEmpty(...values) {
+	for (const value of values) {
+		if (value === undefined || value === null) continue;
+		const normalized = String(value).trim();
+		if (normalized) return normalized;
+	}
+	return "";
 }
 
 function reliabilityOf(item) {
@@ -410,20 +957,23 @@ function reliabilityMetricText(reliability) {
 }
 
 function stationOf(id) {
-	return getStation(id);
+	if (!id) return { name: "", coord: null, punctuality: "" };
+	if (typeof id === "object") return id;
+	return getStation(id) || { name: id, coord: null, punctuality: "" };
 }
 
 function punctualityOf(id) {
-	const s = getStation(id);
+	const s = stationOf(id);
 	if (!s) return null;
-	return PUNCTUALITY[s.punctuality];
+	return PUNCTUALITY[s.punctuality] || DEFAULT_STATION_META;
 }
 
 function showStationDetail(stationId) {
-	const s = getStation(stationId);
+	const s = stationOf(stationId);
 	if (!s) return;
-	const p = PUNCTUALITY[s.punctuality];
-	alert(`${s.name}\n座標：${s.coord.join(", ")}\n準點狀況：${p.label}`);
+	const p = punctualityOf(stationId);
+	const coordText = s.coord ? s.coord.join(", ") : "尚無座標";
+	alert(`${s.name}\n座標：${coordText}\n準點狀況：${p.label}`);
 }
 </script>
 
@@ -472,7 +1022,9 @@ function showStationDetail(stationId) {
 
 				<button
 					class="rp-btn rp-btn--primary"
-					:disabled="!formData.start || !formData.end"
+					:disabled="
+						planningLoading || !formData.start || !formData.end
+					"
 					@click="submitForm"
 				>
 					繼續
@@ -505,7 +1057,13 @@ function showStationDetail(stationId) {
 							{{ formData.start }} → {{ formData.end }} ·
 							{{ formData.date }} {{ formData.time }} 出發
 						</p>
-						<p v-if="reliabilityLoading" class="rp-sub">
+						<p v-if="planningLoading" class="rp-sub">
+							路線規劃中...
+						</p>
+						<p v-else-if="planningError" class="rp-sub">
+							{{ planningError }}
+						</p>
+						<p v-else-if="reliabilityLoading" class="rp-sub">
 							可靠度分析中...
 						</p>
 						<p v-else-if="reliabilityError" class="rp-sub">
@@ -514,7 +1072,7 @@ function showStationDetail(stationId) {
 					</div>
 				</header>
 
-				<ul class="rp-routes">
+				<ul v-if="plannedRoutes.length" class="rp-routes">
 					<li
 						v-for="r in plannedRoutes"
 						:key="r.id"
@@ -570,6 +1128,9 @@ function showStationDetail(stationId) {
 						</div>
 					</li>
 				</ul>
+				<p v-else class="rp-empty">
+					{{ planningLoading ? "正在取得建議路線" : "尚無建議路線" }}
+				</p>
 			</section>
 
 			<!-- Phase: detail (single backend route) -->

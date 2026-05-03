@@ -340,14 +340,14 @@ func queryBusArrivalReliabilityByFilter(selectorKey string, routeName string, st
 			FROM public.mv_bus_arrival_error_detail
 			WHERE %s
 		),
-		window AS (
+		latest_window AS (
 			SELECT max(actual_time) AS max_actual_time FROM matched
 		),
 		base AS (
 			SELECT matched.signed_error_minutes
-			FROM matched, window
-			WHERE window.max_actual_time IS NOT NULL
-				AND matched.actual_time >= window.max_actual_time - INTERVAL '24 hours'
+			FROM matched, latest_window
+			WHERE latest_window.max_actual_time IS NOT NULL
+				AND matched.actual_time >= latest_window.max_actual_time - INTERVAL '24 hours'
 		)
 		SELECT
 			COALESCE(round(avg(abs(signed_error_minutes))::numeric, 1), 0)::float AS avg_abs_arrival_error_minutes,

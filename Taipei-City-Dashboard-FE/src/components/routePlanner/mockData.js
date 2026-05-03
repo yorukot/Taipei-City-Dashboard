@@ -376,42 +376,77 @@ export function routeGeometry(route) {
 		markers.push({ id, name, coord, color, kind });
 	};
 	route.steps.forEach((step, idx) => {
+		const fromPoint = routePoint(step.from);
+		const toPoint = routePoint(step.to);
 		if (step.kind === "walk") {
-			polylines.push({
-				id: `walk-${idx}`,
-				coords: [step.from.coord, step.to.coord],
-				color: "#888888",
-				dashed: true,
-			});
-			addMarker(
-				`m-${idx}-a`,
-				step.from.name,
-				step.from.coord,
-				"#888",
-				"walk",
-			);
-			addMarker(
-				`m-${idx}-b`,
-				step.to.name,
-				step.to.coord,
-				"#888",
-				"walk",
-			);
+			if (fromPoint?.coord && toPoint?.coord) {
+				polylines.push({
+					id: `walk-${idx}`,
+					coords: [fromPoint.coord, toPoint.coord],
+					color: "#888888",
+					dashed: true,
+				});
+			}
+			if (fromPoint?.coord) {
+				addMarker(
+					`m-${idx}-a`,
+					fromPoint.name,
+					fromPoint.coord,
+					"#888",
+					"walk",
+				);
+			}
+			if (toPoint?.coord) {
+				addMarker(
+					`m-${idx}-b`,
+					toPoint.name,
+					toPoint.coord,
+					"#888",
+					"walk",
+				);
+			}
 		} else {
-			const coords = lineCoords(step.lineId, step.from, step.to);
-			polylines.push({
-				id: `transit-${idx}`,
-				coords,
-				color: step.color,
-				dashed: false,
-			});
-			const a = stations[step.from];
-			const b = stations[step.to];
-			addMarker(`m-${idx}-a`, a.name, a.coord, step.color, "transit");
-			addMarker(`m-${idx}-b`, b.name, b.coord, step.color, "transit");
+			const coords =
+				step.lineId &&
+				typeof step.from === "string" &&
+				typeof step.to === "string"
+					? lineCoords(step.lineId, step.from, step.to)
+					: [fromPoint?.coord, toPoint?.coord].filter(Boolean);
+			if (coords.length >= 2) {
+				polylines.push({
+					id: `transit-${idx}`,
+					coords,
+					color: step.color,
+					dashed: false,
+				});
+			}
+			if (fromPoint?.coord) {
+				addMarker(
+					`m-${idx}-a`,
+					fromPoint.name,
+					fromPoint.coord,
+					step.color,
+					"transit",
+				);
+			}
+			if (toPoint?.coord) {
+				addMarker(
+					`m-${idx}-b`,
+					toPoint.name,
+					toPoint.coord,
+					step.color,
+					"transit",
+				);
+			}
 		}
 	});
 	return { polylines, markers };
+}
+
+function routePoint(point) {
+	if (!point) return null;
+	if (typeof point === "string") return stations[point] || null;
+	return point;
 }
 
 // Build geometry for the "two pins only" form preview (start + end).

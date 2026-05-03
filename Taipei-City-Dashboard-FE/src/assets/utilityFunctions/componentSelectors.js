@@ -36,7 +36,7 @@ const youbikeSelectorConfig = {
 	],
 };
 
-const selectorConfigFallbacks = {
+export const selectorConfigFallbacks = {
 	bus_top_delay_routes: {
 		selectors: [
 			{
