@@ -3,9 +3,16 @@
 // station names returned by OpenTripPlanner to coordinates.
 //
 // Match is strict equality on station name to avoid substring collisions
-// like "中山國中" matching "中山".
+// like "中山國中" matching "中山". Names from TRTC GTFS often look like
+// "西門-上行月臺(板南線)" — they're normalized to "西門" before lookup.
 
 import metroStationsRaw from "../../assets/configs/selectors/metro-stations.json";
+
+export function normalizeStationName(name) {
+	if (!name) return name;
+	const dash = name.indexOf("-");
+	return (dash >= 0 ? name.slice(0, dash) : name).trim();
+}
 
 function buildIndex() {
 	const byName = new Map();
@@ -31,8 +38,9 @@ function buildIndex() {
 const index = buildIndex();
 
 export function metroStationByName(name) {
-	if (!name) return null;
-	const entries = index.byName.get(name);
+	const key = normalizeStationName(name);
+	if (!key) return null;
+	const entries = index.byName.get(key);
 	if (!entries || entries.length === 0) return null;
 	return entries[0];
 }

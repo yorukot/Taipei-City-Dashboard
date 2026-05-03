@@ -22,7 +22,10 @@ import {
 	getBusStopIndexSync,
 	pickClosest,
 } from "../components/routePlanner/busStopIndex.js";
-import { metroStationByName } from "../components/routePlanner/metroStationIndex.js";
+import {
+	metroStationByName,
+	normalizeStationName,
+} from "../components/routePlanner/metroStationIndex.js";
 import http from "../router/axios";
 
 const RELIABILITY_META = {
@@ -478,7 +481,8 @@ function busStopCoordByName(name, hintCoord) {
 	if (!name) return null;
 	const index = getBusStopIndexSync();
 	if (!index) return null;
-	const entries = index.byName.get(name);
+	const entries =
+		index.byName.get(name) || index.byName.get(normalizeStationName(name));
 	if (!entries) return null;
 	return pickClosest(entries, hintCoord)?.coord || null;
 }
