@@ -29,6 +29,7 @@ import BarChartWithGoal from "./components/BarChartWithGoal.vue";
 import IconPercentChart from "./components/IconPercentChart.vue";
 import IndicatorChart from "./components/IndicatorChart.vue";
 import TextUnitChart from "./components/TextUnitChart.vue";
+import BoxPlotChart from "./components/BoxPlotChart.vue";
 import SelectorSearchSelect from "./components/SelectorSearchSelect.vue";
 import {
 	getComponentSelectorConfig,
@@ -224,6 +225,7 @@ const chartComponents = {
 	BarChartWithGoal,
 	IndicatorChart,
 	TextUnitChart,
+	BoxPlotChart,
 };
 const chartSvgs = {
 	DistrictChart: DistrictChartSvg,
@@ -246,6 +248,7 @@ const chartSvgs = {
 	BarChartWithGoal: BarChartWithGoalSvg,
 	IndicatorChart: IndicatorChartSvg,
 	TextUnitChart: TextUnitChartSvg,
+	BoxPlotChart: ColumnChartSvg,
 };
 function returnChartComponent(name, svg) {
 	return svg

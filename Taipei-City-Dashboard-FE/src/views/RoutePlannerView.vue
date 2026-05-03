@@ -1,18 +1,26 @@
 <script setup>
 import axios from "axios";
 import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import RoutePlannerMap from "../components/routePlanner/RoutePlannerMap.vue";
 import {
 	PUNCTUALITY,
 	defaultEndpoints,
 	endpointsGeometry,
-	getLine,
 	getStation,
 	mockRoutes,
 	routeGeometry,
 	stations,
 	transitLines,
 } from "../components/routePlanner/mockData.js";
+import {
+	customRouteGeometry,
+	getCustomLine,
+	getCustomStation,
+	lineRegistry,
+	loadBusRouteStops,
+	loadBusRoutes,
+} from "../components/routePlanner/customRouteData.js";
 import http from "../router/axios";
 
 const RELIABILITY_META = {
@@ -166,6 +174,7 @@ async function submitForm() {
 function submitCustom() {
 	customPlan.steps = [];
 	phase.value = "custom";
+	loadBusRoutes();
 }
 
 function backToForm() {
@@ -188,14 +197,28 @@ function backToList() {
 
 // ── Custom plan actions ─────────────────────────────────────────────────
 const availableLines = computed(() =>
-	transitLines.filter((l) => l.type === newStep.mode),
+	lineRegistry.filter((l) => l.type === newStep.mode),
 );
 
 const stationsForNewLine = computed(() => {
-	const line = getLine(newStep.lineId);
+	const line = getCustomLine(newStep.lineId);
 	if (!line) return [];
-	return line.stationIds.map((id) => ({ id, ...getStation(id) }));
+	return line.stationIds
+		.map((id) => {
+			const s = getCustomStation(id);
+			return s ? { id, ...s } : null;
+		})
+		.filter(Boolean);
 });
+
+watch(
+	() => newStep.lineId,
+	(id) => {
+		if (!id) return;
+		const line = getCustomLine(id);
+		if (line?.type === "bus") loadBusRouteStops(id);
+	},
+);
 
 function openAddNode() {
 	newStep.open = true;
@@ -210,7 +233,7 @@ function cancelAddNode() {
 }
 
 function commitAddNode() {
-	const line = getLine(newStep.lineId);
+	const line = getCustomLine(newStep.lineId);
 	if (!line || !newStep.from || !newStep.to) return;
 	if (newStep.from === newStep.to) return;
 	customPlan.steps.push({
@@ -230,7 +253,7 @@ function removeStep(idx) {
 }
 
 function segmentMinutes(step) {
-	const line = getLine(step.lineId);
+	const line = getCustomLine(step.lineId);
 	if (!line) return 0;
 	const i = line.stationIds.indexOf(step.from);
 	const j = line.stationIds.indexOf(step.to);
@@ -302,7 +325,7 @@ const mapGeometry = computed(() => {
 		return routeGeometry(selectedRoute.value);
 	}
 	if (phase.value === "custom" && customRoute.value) {
-		return routeGeometry(customRoute.value);
+		return customRouteGeometry(customRoute.value);
 	}
 	return endpointsGeometry(null, null);
 });

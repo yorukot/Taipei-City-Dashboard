@@ -66,12 +66,38 @@ type ThreeDimensionalData struct {
 	Data  int    `gorm:"column:data"`
 }
 
-type FiveDimensionalData struct {
-	Xaxis string          `gorm:"column:x_axis"`
-	P25   sql.NullFloat64 `gorm:"column:p25"`
-	P50   sql.NullFloat64 `gorm:"column:p50"`
-	P75   sql.NullFloat64 `gorm:"column:p75"`
-	Stdev sql.NullFloat64 `gorm:"column:stdev"`
+/*
+BoxPlotData Json Format (per ApexCharts boxPlot series):
+
+	{
+		"data": [
+			{
+				"data": [
+					{ "x": "label", "y": [min, q1, median, q3, max] },
+					...
+				]
+			}
+		]
+	}
+
+The query_chart SQL must return columns: x_axis, min, q1, median, q3, max.
+*/
+type BoxPlotData struct {
+	Xaxis  string  `gorm:"column:x_axis"`
+	Min    float64 `gorm:"column:min"`
+	Q1     float64 `gorm:"column:q1"`
+	Median float64 `gorm:"column:median"`
+	Q3     float64 `gorm:"column:q3"`
+	Max    float64 `gorm:"column:max"`
+}
+
+type BoxPlotDataItem struct {
+	X string    `json:"x"`
+	Y []float64 `json:"y"`
+}
+
+type BoxPlotDataOutput struct {
+	Data []BoxPlotDataItem `json:"data"`
 }
 
 type ThreeDimensionalDataOutput struct {
@@ -413,10 +439,9 @@ func GetThreeDimensionalData(query *string, params ChartQueryParams) (chartDataO
 	return chartDataOutput, categories, nil
 }
 
-func GetFiveDimensionalData(query *string, params ChartQueryParams) (chartDataOutput []FiveDimensionalData, err error) {
-	var chartData []FiveDimensionalData
+func GetBoxPlotData(query *string, params ChartQueryParams) (chartDataOutput []BoxPlotDataOutput, err error) {
+	var chartData []BoxPlotData
 
-	// 2. Get the data from the database
 	err = scanChartData(query, params, &chartData)
 	if err != nil {
 		return chartDataOutput, err
@@ -425,9 +450,15 @@ func GetFiveDimensionalData(query *string, params ChartQueryParams) (chartDataOu
 		return chartDataOutput, err
 	}
 
-	// 3. Convert the data to the format required by the front-end
-	chartDataOutput = append(chartDataOutput, chartData...)
+	items := make([]BoxPlotDataItem, 0, len(chartData))
+	for _, row := range chartData {
+		items = append(items, BoxPlotDataItem{
+			X: row.Xaxis,
+			Y: []float64{row.Min, row.Q1, row.Median, row.Q3, row.Max},
+		})
+	}
 
+	chartDataOutput = append(chartDataOutput, BoxPlotDataOutput{Data: items})
 	return chartDataOutput, nil
 }
 

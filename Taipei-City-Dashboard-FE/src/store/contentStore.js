@@ -13,6 +13,7 @@ import { defineStore } from "pinia";
 import {
 	getComponentSelectorParams,
 	initializeComponentSelectors,
+	loadApiSelectorOptions,
 	updateComponentSelectorValue,
 } from "../assets/utilityFunctions/componentSelectors";
 import { getComponentDataTimeframe } from "../assets/utilityFunctions/dataTimeframe";
@@ -129,6 +130,7 @@ export const useContentStore = defineStore("content", {
 			{ useDashboardTimeRange = false, includeTimeRange = true } = {},
 		) {
 			initializeComponentSelectors(component);
+			await loadApiSelectorOptions(component);
 
 			const response = await http.get(
 				`/component/${component.id}/chart`,

@@ -1,3 +1,6 @@
+import { reactive } from "vue";
+
+import http from "../../router/axios";
 import busRouteStopDirectionLabels from "../configs/selectors/busRouteStopDirectionLabels.json";
 import newTaipeiStations from "../configs/selectors/newtaipei-stations.json";
 import taipeiStations from "../configs/selectors/taipei-stations.json";
@@ -9,6 +12,12 @@ const selectorLabelRegistry = {
 		new_tpe: toYoubikeStationOptions(newTaipeiStations, "NWT"),
 	},
 };
+
+// Reactive cache for selectors loaded via api_source. Keyed by cacheKey().
+// Stored as { options, raw, loaded } so callers can resolve a selected value
+// back to its raw API record (used for cascading dependent selectors).
+const apiOptionsCache = reactive({});
+const apiOptionsInflight = {};
 
 const youbikeSelectorConfig = {
 	selectors: [
@@ -98,6 +107,11 @@ export function getSelectorOptions(selector, selectorValues = {}) {
 	if (!selector) return [];
 	if (Array.isArray(selector.options)) return selector.options;
 
+	if (selector.api_source) {
+		const cacheKey = apiCacheKey(selector, selectorValues);
+		return apiOptionsCache[cacheKey]?.options || [];
+	}
+
 	const labelSource = selectorLabelRegistry[selector.label_key];
 	if (!labelSource) return [];
 	if (Array.isArray(labelSource)) return labelSource;
@@ -163,6 +177,136 @@ export function getComponentSelectorParams(component) {
 		}
 		return params;
 	}, {});
+}
+
+/**
+ * Loads options for any selector with `api_source`, in dependency order.
+ * Populates the reactive apiOptionsCache so getSelectorOptions() can read them
+ * synchronously, and re-validates selector_values against the loaded options.
+ * Safe to call multiple times — already-fetched URLs are cached.
+ */
+export async function loadApiSelectorOptions(component) {
+	const selectorConfig = getComponentSelectorConfig(component);
+	if (!Array.isArray(selectorConfig?.selectors)) return;
+
+	const selectors = selectorConfig.selectors.filter((s) => s.api_source);
+	if (selectors.length === 0) return;
+
+	const ordered = orderSelectorsByDependency(selectors);
+
+	for (const selector of ordered) {
+		const selectorValues = initializeComponentSelectors(component);
+		await fetchSelectorOptions(selector, selectorValues);
+		// After options are loaded, re-initialize so the value snaps to a valid option.
+		initializeComponentSelectors(component);
+	}
+}
+
+async function fetchSelectorOptions(selector, selectorValues) {
+	const url = resolveApiUrl(selector, selectorValues);
+	if (!url) return [];
+
+	const cacheKey = apiCacheKey(selector, selectorValues);
+	if (apiOptionsCache[cacheKey]?.loaded) {
+		return apiOptionsCache[cacheKey].options;
+	}
+	if (apiOptionsInflight[cacheKey]) {
+		return apiOptionsInflight[cacheKey];
+	}
+
+	const promise = (async () => {
+		try {
+			const response = await http.get(url);
+			const rows = Array.isArray(response.data?.data)
+				? response.data.data
+				: [];
+			const options = rows.map((row) => ({
+				label: String(
+					row[selector.api_source.label_field] ?? row.name ?? "",
+				),
+				value: String(
+					row[selector.api_source.value_field] ?? row.id ?? "",
+				),
+				raw: row,
+			}));
+			apiOptionsCache[cacheKey] = { options, loaded: true };
+			return options;
+		} catch (err) {
+			console.warn(
+				`Failed to load selector options for ${selector.key}`,
+				err,
+			);
+			apiOptionsCache[cacheKey] = { options: [], loaded: true };
+			return [];
+		} finally {
+			delete apiOptionsInflight[cacheKey];
+		}
+	})();
+
+	apiOptionsInflight[cacheKey] = promise;
+	return promise;
+}
+
+function resolveApiUrl(selector, selectorValues) {
+	const apiSource = selector.api_source;
+	if (!apiSource?.url) return null;
+
+	let { url } = apiSource;
+	const placeholders = url.match(/\{([^}]+)\}/g) || [];
+
+	for (const placeholder of placeholders) {
+		const token = placeholder.slice(1, -1);
+		const value = resolvePlaceholderValue(token, selector, selectorValues);
+		if (value === undefined || value === null || value === "") return null;
+		url = url.replace(placeholder, encodeURIComponent(value));
+	}
+
+	return url;
+}
+
+function resolvePlaceholderValue(token, selector, selectorValues) {
+	// Format: "<parent_selector_key>.<field>" — pulls a field from the parent's
+	// selected raw record. Default field is `id`.
+	const [parentKey, field = "id"] = token.split(".");
+	const parentValue = selectorValues[parentKey];
+	if (!parentValue) return null;
+
+	const parentSelectors = Object.keys(apiOptionsCache).filter((key) =>
+		key.startsWith(`${parentKey}|`),
+	);
+	for (const cacheKey of parentSelectors) {
+		const match = apiOptionsCache[cacheKey]?.options?.find(
+			(option) => option.value === parentValue,
+		);
+		if (match?.raw && match.raw[field] !== undefined) {
+			return match.raw[field];
+		}
+	}
+	return parentValue;
+}
+
+function apiCacheKey(selector, selectorValues) {
+	const apiSource = selector.api_source || {};
+	const dependsOn = selector.depends_on
+		? `${selector.depends_on}=${selectorValues[selector.depends_on] || ""}`
+		: "";
+	return `${selector.key}|${apiSource.url || ""}|${dependsOn}`;
+}
+
+function orderSelectorsByDependency(selectors) {
+	const ordered = [];
+	const remaining = [...selectors];
+	while (remaining.length) {
+		const idx = remaining.findIndex(
+			(s) => !s.depends_on || ordered.some((o) => o.key === s.depends_on),
+		);
+		if (idx === -1) {
+			ordered.push(...remaining);
+			break;
+		}
+		ordered.push(remaining.splice(idx, 1)[0]);
+	}
+	return ordered;
 }
 
 function resetDependentSelectors(component, changedKey) {

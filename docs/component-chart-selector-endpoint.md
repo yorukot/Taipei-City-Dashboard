@@ -50,6 +50,7 @@ Existing query types are still supported:
 | `percent` | `x_axis`, `y_axis`, `data`, optional `icon` |
 | `time` | `x_axis`, `y_axis`, `data` |
 | `map_legend` | `name`, `type`, optional `icon`, optional `value` |
+| `five_d` | `x_axis`, `min`, `q1`, `median`, `q3`, `max` (box plot 5-number summary) |
 
 Two-selector query types are aliases that require both `selector_1` and `selector_2`:
 
@@ -62,6 +63,7 @@ Two-selector query types are aliases that require both `selector_1` and `selecto
 | `two_selector_percent` | `percent` | Two-selector query returning percent-style grouped data. |
 | `two_selector_time` | `time` | Two-selector query returning time-series data. |
 | `two_selector_map_legend` | `map_legend` | Two-selector query returning map legend data. |
+| `two_selector_five_d` | `five_d` | Two-selector query returning box plot 5-number summary data. |
 
 For most dual-dropdown data, use `two_selector` unless the SQL output is clearly one of the other shapes.
 
@@ -182,6 +184,76 @@ GET /api/v1/component/123/chart?city=taipei&selector_1=route-a&selector_2=segmen
   ]
 }
 ```
+
+### `five_d` / `two_selector_five_d`
+
+Returns ApexCharts boxPlot-ready series. Each `y` is `[min, q1, median, q3, max]`.
+
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "data": [
+        { "x": "歡仔園", "y": [-3.2, -1.0, 0.5, 2.4, 7.8] },
+        { "x": "僑中一街", "y": [-2.0, -0.5, 0.8, 3.1, 9.4] }
+      ]
+    }
+  ]
+}
+```
+
+## Selector Sources
+
+Selectors render from one of three sources, configured per-selector in `query_charts.selector_config`:
+
+| Source | How it loads | When to use |
+| --- | --- | --- |
+| Inline `options` | Static array on the selector | Small, fixed lists (e.g. city, train type). |
+| Static `label_key` | Pulls from a frontend-bundled JSON registry | Large pre-snapshotted lists shipped with the FE. |
+| `api_source` | Fetches at runtime from a backend endpoint | Live route/stop lists, anything that should track DB changes. |
+
+### `api_source` shape
+
+```json
+{
+  "url": "/route",
+  "value_field": "route_uid",
+  "label_field": "route_name"
+}
+```
+
+Dependent selectors can reference the parent's raw record via `{<parent_key>.<field>}` placeholders in the URL. Field defaults to `id`.
+
+```json
+{
+  "selectors": [
+    {
+      "key": "selector_1",
+      "label": "公車路線",
+      "type": "search-select",
+      "api_source": {
+        "url": "/route",
+        "value_field": "route_uid",
+        "label_field": "route_name"
+      }
+    },
+    {
+      "key": "selector_2",
+      "label": "站點",
+      "type": "search-select",
+      "depends_on": "selector_1",
+      "api_source": {
+        "url": "/route/{selector_1.id}/stops",
+        "value_field": "stop_uid",
+        "label_field": "stop_name"
+      }
+    }
+  ]
+}
+```
+
+The frontend caches each fetched URL for the lifetime of the session. `selector_1`'s value (`route_uid`) is what gets sent to `/component/:id/chart` as `selector_1=...`; the SQL should filter by that.
 
 ## Error Handling
 

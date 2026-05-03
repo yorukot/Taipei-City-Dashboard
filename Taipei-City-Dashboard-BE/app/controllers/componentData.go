@@ -34,6 +34,8 @@ func resolveChartQueryType(queryType string) (baseQueryType string, requireSelec
 		return "time", true, true
 	case "two_selector_map_legend":
 		return "map_legend", true, true
+	case "two_selector_five_d":
+		return "five_d", true, true
 	default:
 		return "", false, false
 	}
@@ -110,7 +112,7 @@ func GetComponentChartData(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "success", "data": chartData, "categories": categories})
 	} else if baseQueryType == "five_d" {
-		chartData, err := models.GetFiveDimensionalData(&queryString, chartQueryParams)
+		chartData, err := models.GetBoxPlotData(&queryString, chartQueryParams)
 		if err != nil {
 			handleComponentChartDataError(c, err)
 			return
