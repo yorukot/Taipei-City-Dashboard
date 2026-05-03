@@ -9,10 +9,6 @@
 	"embeddedLanguageFormatting": "auto",
 	"quoteProps": "as-needed",
 	"singleAttributePerLine": false,
-	"plugins": [
-		"prettier-plugin-organize-imports",
-		"prettier-plugin-packagejson"
-	],
 	"overrides": [
 		{
 			"files": ".prettierrc",
