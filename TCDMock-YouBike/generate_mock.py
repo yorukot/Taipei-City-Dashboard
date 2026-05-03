@@ -2,23 +2,22 @@
 Generate mock YouBike availability snapshots at 5-min intervals over a day.
 
 Reads station metadata from data/youbike/{taipei,newtaipei}-stations.json
-(produced by fetch_youbike_data.py) and writes one BikeAvailability JSON
-array per tick to data/youbike/mock/YYYYMMDD-HHMM.json.
+(produced by fetch_youbike_data.py) and writes one Taipei-Open-Data-v2
+style JSON array per tick to data/youbike/mock/YYYYMMDD-HHMM.json.
 
 Behavior model:
   - Each station is classified by district / name into one of four types:
     business, residential, mixed, tourist.
   - Each type has a signed flow profile across the day (sum of gaussian
-    bumps) describing expected change in AvailableRentBikes per 5-min tick.
-    Business stations gain bikes during morning rush (people arriving at
-    work) and lose them in the evening; residential is the mirror image;
+    bumps) describing expected change in available_rent_bikes per 5-min
+    tick. Business stations gain bikes during morning rush (people arriving
+    at work) and lose them in the evening; residential is the mirror image;
     tourist stations have a broad afternoon arc; mixed has muted peaks.
   - Per-station "intensity" is a clipped gaussian multiplier; flow scales
     with capacity / 20.
   - Initial state at 00:00 set per type (residential ~70% full,
     business ~25%, mixed/tourist ~50%).
   - Gaussian noise added each tick; result clipped to [0, capacity].
-  - GeneralBikes / ElectricBikes split per station via fixed e-bike share.
 """
 
 from __future__ import annotations
@@ -49,44 +48,44 @@ TZ = dt.timezone(dt.timedelta(hours=8))
 #   residential — bedroom districts; outflow in AM, inflow in PM
 #   mixed       — dense areas with both office and residential blocks
 #   tourist     — recreational / nightlife (Shilin, Wanhua, riverside towns)
-DISTRICTS: tuple[tuple[str, float, float, str], ...] = (
+DISTRICTS: tuple[tuple[str, float, float, str, str], ...] = (
     # Taipei City
-    ("中正區", 25.038, 121.518, "business"),
-    ("信義區", 25.030, 121.572, "business"),
-    ("松山區", 25.058, 121.563, "business"),
-    ("內湖區", 25.082, 121.595, "business"),
-    ("南港區", 25.054, 121.616, "business"),
-    ("大安區", 25.025, 121.543, "mixed"),
-    ("中山區", 25.063, 121.534, "mixed"),
-    ("大同區", 25.063, 121.514, "mixed"),
-    ("文山區", 24.990, 121.570, "residential"),
-    ("北投區", 25.130, 121.500, "residential"),
-    ("士林區", 25.088, 121.524, "tourist"),
-    ("萬華區", 25.034, 121.500, "tourist"),
+    ("中正區", 25.038, 121.518, "business",    "Zhongzheng Dist."),
+    ("信義區", 25.030, 121.572, "business",    "Xinyi Dist."),
+    ("松山區", 25.058, 121.563, "business",    "Songshan Dist."),
+    ("內湖區", 25.082, 121.595, "business",    "Neihu Dist."),
+    ("南港區", 25.054, 121.616, "business",    "Nangang Dist."),
+    ("大安區", 25.025, 121.543, "mixed",       "Daan Dist."),
+    ("中山區", 25.063, 121.534, "mixed",       "Zhongshan Dist."),
+    ("大同區", 25.063, 121.514, "mixed",       "Datong Dist."),
+    ("文山區", 24.990, 121.570, "residential", "Wenshan Dist."),
+    ("北投區", 25.130, 121.500, "residential", "Beitou Dist."),
+    ("士林區", 25.088, 121.524, "tourist",     "Shilin Dist."),
+    ("萬華區", 25.034, 121.500, "tourist",     "Wanhua Dist."),
     # New Taipei City — urban core
-    ("板橋區", 25.013, 121.467, "mixed"),
-    ("三重區", 25.075, 121.494, "residential"),
-    ("中和區", 24.999, 121.500, "residential"),
-    ("永和區", 25.007, 121.515, "residential"),
-    ("新莊區", 25.043, 121.450, "residential"),
-    ("新店區", 24.971, 121.541, "residential"),
-    ("土城區", 24.973, 121.443, "residential"),
-    ("蘆洲區", 25.087, 121.471, "residential"),
-    ("樹林區", 24.991, 121.420, "residential"),
-    ("汐止區", 25.063, 121.658, "residential"),
-    ("淡水區", 25.169, 121.443, "tourist"),
-    ("林口區", 25.077, 121.388, "residential"),
-    ("五股區", 25.083, 121.438, "residential"),
-    ("泰山區", 25.060, 121.430, "residential"),
-    ("八里區", 25.146, 121.402, "tourist"),
-    ("三峽區", 24.934, 121.371, "tourist"),
-    ("鶯歌區", 24.953, 121.354, "tourist"),
-    ("瑞芳區", 25.108, 121.811, "tourist"),
+    ("板橋區", 25.013, 121.467, "mixed",       "Banqiao Dist."),
+    ("三重區", 25.075, 121.494, "residential", "Sanchong Dist."),
+    ("中和區", 24.999, 121.500, "residential", "Zhonghe Dist."),
+    ("永和區", 25.007, 121.515, "residential", "Yonghe Dist."),
+    ("新莊區", 25.043, 121.450, "residential", "Xinzhuang Dist."),
+    ("新店區", 24.971, 121.541, "residential", "Xindian Dist."),
+    ("土城區", 24.973, 121.443, "residential", "Tucheng Dist."),
+    ("蘆洲區", 25.087, 121.471, "residential", "Luzhou Dist."),
+    ("樹林區", 24.991, 121.420, "residential", "Shulin Dist."),
+    ("汐止區", 25.063, 121.658, "residential", "Xizhi Dist."),
+    ("淡水區", 25.169, 121.443, "tourist",     "Tamsui Dist."),
+    ("林口區", 25.077, 121.388, "residential", "Linkou Dist."),
+    ("五股區", 25.083, 121.438, "residential", "Wugu Dist."),
+    ("泰山區", 25.060, 121.430, "residential", "Taishan Dist."),
+    ("八里區", 25.146, 121.402, "tourist",     "Bali Dist."),
+    ("三峽區", 24.934, 121.371, "tourist",     "Sanxia Dist."),
+    ("鶯歌區", 24.953, 121.354, "tourist",     "Yingge Dist."),
+    ("瑞芳區", 25.108, 121.811, "tourist",     "Ruifang Dist."),
 )
 
 
-def classify_all(stations: list[dict]) -> tuple[list[str], list[str]]:
-    """Return (district_name, type) per station via closest-centroid lookup."""
+def classify_all(stations: list[dict]) -> tuple[list[str], list[str], list[str]]:
+    """Return (district_zh, district_en, type) per station via closest-centroid lookup."""
     coords = np.array([
         [(s.get("StationPosition") or {}).get("PositionLat") or 0.0,
          (s.get("StationPosition") or {}).get("PositionLon") or 0.0]
@@ -96,9 +95,10 @@ def classify_all(stations: list[dict]) -> tuple[list[str], list[str]]:
     # Squared euclidean in degrees — fine for ranking at this scale.
     d2 = ((coords[:, None, :] - centroids[None, :, :]) ** 2).sum(axis=2)
     nearest = d2.argmin(axis=1)
-    names = [DISTRICTS[i][0] for i in nearest]
+    names_zh = [DISTRICTS[i][0] for i in nearest]
     types = [DISTRICTS[i][3] for i in nearest]
-    return names, types
+    names_en = [DISTRICTS[i][4] for i in nearest]
+    return names_zh, names_en, types
 
 
 def build_profile(kind: str) -> np.ndarray:
@@ -164,10 +164,10 @@ def main() -> None:
     n = len(stations)
     print(f"  {n} stations with capacity > 0")
 
-    districts, types = classify_all(stations)
+    districts_zh, districts_en, types = classify_all(stations)
     type_counts = {t: types.count(t) for t in ("business", "residential", "mixed", "tourist")}
     print(f"  by type: {type_counts}")
-    top_districts = sorted({d: districts.count(d) for d in set(districts)}.items(),
+    top_districts = sorted({d: districts_zh.count(d) for d in set(districts_zh)}.items(),
                            key=lambda x: -x[1])[:8]
     print(f"  top districts: {top_districts}")
 
@@ -177,13 +177,6 @@ def main() -> None:
     capacities = np.array([s["BikesCapacity"] for s in stations], dtype=np.int64)
     intensities = np.clip(rng.normal(1.0, 0.4, size=n), 0.2, 2.5)
     profile_arr = profile_arr * (capacities[:, None] / 20.0) * intensities[:, None]
-
-    is_youbike2 = np.array([s.get("ServiceType") == 2 for s in stations])
-    ebike_share = np.where(
-        is_youbike2,
-        rng.uniform(0.10, 0.30, size=n),
-        rng.uniform(0.00, 0.10, size=n),
-    )
 
     init_pct = {"business": 0.25, "residential": 0.70, "mixed": 0.50, "tourist": 0.50}
     rent = np.clip(
@@ -195,6 +188,18 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     midnight = dt.datetime.combine(day, dt.time.min, tzinfo=TZ)
 
+    # Pre-compute per-station immutable fields once to keep the per-tick loop tight.
+    snos = [s["StationID"] for s in stations]
+    snas = [(s.get("StationName") or {}).get("Zh_tw") for s in stations]
+    snaens = [(s.get("StationName") or {}).get("En") for s in stations]
+    ars = [(s.get("StationAddress") or {}).get("Zh_tw") for s in stations]
+    arens = [
+        ((s.get("StationAddress") or {}).get("En") or "").replace(", ", "， ")
+        for s in stations
+    ]
+    lats = [(s.get("StationPosition") or {}).get("PositionLat") for s in stations]
+    lons = [(s.get("StationPosition") or {}).get("PositionLon") for s in stations]
+
     print(f"Generating {TICKS_PER_DAY} ticks for {day} (seed={args.seed})…")
 
     for t in range(TICKS_PER_DAY):
@@ -204,28 +209,34 @@ def main() -> None:
         rent = np.clip(rent + delta, 0, capacities)
 
         ts = midnight + dt.timedelta(seconds=t * SECONDS_PER_TICK)
-        ts_iso = ts.isoformat(timespec="seconds")
+        info_ts = ts.strftime("%Y-%m-%d %H:%M:%S")
+        info_date = ts.strftime("%Y-%m-%d")
+        # Publish lag mirrors the real Taipei feed (~48s after source time).
+        update_ts = (ts + dt.timedelta(seconds=48)).strftime("%Y-%m-%d %H:%M:%S")
 
         records = []
-        for i, s in enumerate(stations):
+        for i in range(n):
             cap = int(capacities[i])
             rec_rent = int(rent[i])
-            rec_return = cap - rec_rent
-            ebikes = int(round(rec_rent * float(ebike_share[i])))
-            generals = rec_rent - ebikes
             records.append({
-                "StationUID": s.get("StationUID"),
-                "StationID": s.get("StationID"),
-                "ServiceStatus": 1,
-                "ServiceType": s.get("ServiceType"),
-                "AvailableRentBikes": rec_rent,
-                "AvailableReturnBikes": rec_return,
-                "AvailableRentBikesDetail": {
-                    "GeneralBikes": generals,
-                    "ElectricBikes": ebikes,
-                },
-                "SrcUpdateTime": ts_iso,
-                "UpdateTime": ts_iso,
+                "sno": snos[i],
+                "sna": snas[i],
+                "sarea": districts_zh[i],
+                "mday": info_ts,
+                "ar": ars[i],
+                "sareaen": districts_en[i],
+                "snaen": snaens[i],
+                "aren": arens[i],
+                "act": "1",
+                "srcUpdateTime": update_ts,
+                "updateTime": update_ts,
+                "infoTime": info_ts,
+                "infoDate": info_date,
+                "Quantity": cap,
+                "available_rent_bikes": rec_rent,
+                "latitude": lats[i],
+                "longitude": lons[i],
+                "available_return_bikes": cap - rec_rent,
             })
 
         out_path = OUT_DIR / f"{ts.strftime('%Y%m%d-%H%M')}.json"

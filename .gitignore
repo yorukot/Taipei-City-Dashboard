@@ -19,6 +19,7 @@ TCDMock-YouBike/*
 
 TCDMock-Train/*
 !TCDMock-Train/**/*.py
+TCDMRT/
 
 # Editor directories and files
 .idea
